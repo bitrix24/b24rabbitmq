@@ -9,9 +9,7 @@ const COPYRIGHT_DATE = (new Date()).getFullYear()
 export default defineBuildConfig(
 	[
 		'esm',
-		'commonjs',
-		'umd',
-		'umd-min',
+		'commonjs'
 	].map((formatTypeParam) => initConfig(formatTypeParam))
 )
 

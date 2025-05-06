@@ -25,12 +25,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "consola": "^3.4.2"
   },
   "devDependencies": {
     "esbuild": "^0.25.4",
     "typescript": "^5.8.3",
     "unbuild": "^3.5.0",
-    "eslint-config-unjs": "^0.4.2"
+    "eslint-config-unjs": "^0.4.2",
+    "@types/amqplib": "^0.10.7",
+    "tsx": "^4.19.4"
   },
   "peerDependencies": {
     "amqplib": "^0.10.8"
@@ -60,7 +63,6 @@
   "main": "./dist/commonjs/index.cjs",
   "module": "./dist/esm/index.mjs",
   "types": "./dist/esm/index.d.ts",
-  "unpkg": "dist/umd/index.min.js",
   "files": [
     "README.md",
     "LICENSE",
