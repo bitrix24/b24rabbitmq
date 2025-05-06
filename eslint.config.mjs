@@ -2,6 +2,8 @@ import unjs from 'eslint-config-unjs'
 
 export default unjs({
 	rules: {
+    'unicorn/no-array-for-each': 'off',
+    'unicorn/prefer-top-level-await': 'off',
     'unicorn/prefer-global-this': 'off',
 		'unicorn/switch-case-braces': 'off',
 		'no-prototype-builtins': 'off',
