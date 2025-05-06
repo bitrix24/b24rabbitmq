@@ -12,7 +12,7 @@ Example source: [RabbitMQ tutorial 2 — Task Queue](https://habr.com/ru/article
 
 ## Example Implementation in TypeScript:
 
-typescript
+```typescript
 // rabbitmq.config.ts
 import type { RabbitMQConfig } from '~/rabbitmq/types';
 
@@ -45,10 +45,10 @@ export const rabbitMQConfig: RabbitMQConfig = {
     prefetchCount: 1
   }
 };
-
+```
 
 ### Producer:
-typescript
+```typescript
 // producers/demo1-producer.ts
 import { RabbitMQProducer } from '~/rabbitmq/producer';
 import { rabbitMQConfig } from '../rabbitmq.config';
@@ -71,10 +71,10 @@ tasks.forEach(async (task) => {
   await sendTask(task);
   await new Promise(resolve => setTimeout(resolve, 1000));
 });
-
+```
 
 ### Consumer:
-typescript
+```typescript
 // consumers/demo1-consumer.ts
 import { RabbitMQConsumer } from '~/rabbitmq/consumer';
 import { rabbitMQConfig } from '../rabbitmq.config';
@@ -96,7 +96,7 @@ consumer.registerHandler('demo1.v1', async (msg, ack) => {
     ack();
   }
 });
-
+```
 
 ### Launch:
 1. Start 3 consumer instances:

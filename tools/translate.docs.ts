@@ -49,10 +49,7 @@ async function translateText(
       consola.error('❌ Empty translate response')
       return text
     }
-    return (((completion.choices[0] || {})?.message || {}).content || '')
-      .replaceAll('```markdown', '')
-      .replaceAll('```', '')
-      .trim()
+    return (((completion.choices[0] || {})?.message || {}).content || '').trim()
   } catch (error) {
     consola.error('❌ Translation error:', (error instanceof Error) ? error?.message : error)
     return text

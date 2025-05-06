@@ -95,7 +95,7 @@ Bind to `exchange` with the key `failed`.
 > 
 > Since messages from there will automatically move to our main queue, from which we already read.
 
-typescript
+```typescript
 // rabbitmq.config.ts
 import type { RabbitMQConfig } from '~/rabbitmq/types';
 
@@ -173,10 +173,10 @@ export const rabbitMQConfig: RabbitMQConfig = {
     prefetchCount: 1
   }
 };
-
+```
 
 ### Main queue processing consumer:
-typescript
+```typescript
 // consumers/main-consumer.ts
 import { RabbitMQConsumer } from '~/rabbitmq/consumer';
 import { rabbitMQConfig } from '../rabbitmq.config';
@@ -220,10 +220,10 @@ consumer.registerHandler('demo2.events.subscriptions-service.v1', async (msg, ac
     ack();
   }
 });
-
+```
 
 ### Problematic messages processing consumer (garden):
-typescript
+```typescript
 // consumers/failed-consumer.ts
 import { RabbitMQConsumer } from '~/rabbitmq/consumer';
 import { rabbitMQConfig } from '../rabbitmq.config';
@@ -252,10 +252,10 @@ consumer.registerHandler('demo2.subscriptions-service.failed.v1', async (msg, ac
     ack();
   }
 });
-
+```
 
 ### Producer for sending messages:
-typescript
+```typescript
 // producers/event-producer.ts
 import { RabbitMQProducer } from '~/rabbitmq/producer';
 import { rabbitMQConfig } from '../rabbitmq.config';
@@ -270,7 +270,7 @@ export async function sendEvent(message: any) {
     { persistent: true }
   );
 }
-
+```
 
 ### Starting consumers:
 bash
