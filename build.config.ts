@@ -155,7 +155,7 @@ function initConfig(formatTypeParam: string): BuildConfig
  * @copyright (c) ${COPYRIGHT_DATE} Bitrix24
  * @licence MIT
  * @links https://github.com/bitrix24/b24rabbitmq - GitHub
- * @links https://github.com/bitrix24/b24rabbitmq/tree/main/docs/en - Documentation
+ * @links https://github.com/bitrix24/b24rabbitmq/blob/main/docs/en/1_page.md - Documentation
  */`
         },
 				intro: () => {return ''},
