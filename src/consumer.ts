@@ -30,7 +30,10 @@ export class RabbitMQConsumer extends RabbitMQBase {
       const problem = error instanceof Error ? error : new Error(`[RabbitMQ::Consumer] connected error`, { cause: error })
 
       console.error(problem)
-      if (problem.message.includes('ENOTFOUND')) {
+      if (
+        problem.message.includes('ENOTFOUND')
+        || problem.message.includes('ECONNREFUSED')
+      ) {
         throw problem
       }
 
