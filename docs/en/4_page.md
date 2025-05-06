@@ -251,6 +251,6 @@ logfile=/var/log/supervisor/supervisord.log ; main log file
 files = /etc/supervisord.d/*.conf
 
 
-Script configuration is described on the [Usage](docs/3_page.md) page.
+Script configuration is described on the [Usage](3_page.md) page.
 
-[← Usage](docs/3_page.md) | [↑ Contents](README.md)
+[← Usage](3_page.md) | [↑ Contents](../../README.md)

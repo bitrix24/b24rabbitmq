@@ -149,3 +149,5 @@ return [
 ?>
 
 First, call `$loader->init()`. This function will declare `exchange` and `queue` as defined in your `producers`
+
+[← Terms](1_page.md) | [↑ Contents](../../README.md) | [Usage →](3_page.md)

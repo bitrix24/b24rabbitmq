@@ -64,8 +64,8 @@ The key can take two values:
 * `any` — the value must match at least one key.  
 
 # Examples:  
-* [Example 1: Even Distribution](docs/demo/1_page.md)  
-* [Example 2: Balcony and Garden](docs/demo/2_page.md)  
+* [Example 1: Even Distribution](demo/1_page.md)  
+* [Example 2: Balcony and Garden](demo/2_page.md)  
 
 # Calculating the Number of `consumer`s  
 
@@ -77,4 +77,4 @@ Example:
 * (0.5 / 0.4 ) * 1 = 1.25 = 2  
 ----  
 
-[↑ Contents](README.md) | [Configuration →](docs/2_page.md)
+[↑ Contents](../../README.md) | [Configuration →](2_page.md)

@@ -291,4 +291,4 @@ npm run start:consumer -- --queue=demo2.subscriptions-service.failed.v1
 
 ---
 
-[← Example 1: Even Distribution](docs/demo/1_page.md) | [↑ Theory](docs/1_page.md)
+[← Example 1: Even Distribution](1_page.md) | [↑ Theory](../1_page.md)

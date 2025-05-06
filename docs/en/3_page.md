@@ -86,4 +86,4 @@ If multiple processes need to be launched, then:
 * remember to stop them via `supervisorctl stop shef-rabbitmq-consumer-demo:*`
 
 
-[← Configuration](docs/2_page.md) | [↑ Contents](README.md) | [Software Installation →](docs/4_page.md)
+[← Configuration](2_page.md) | [↑ Contents](../../README.md) | [Software Installation →](4_page.md)
