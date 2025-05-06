@@ -46,28 +46,35 @@ async function translateText(
     })
 
     if (null === completion) {
-      return ''
+      consola.error('❌ Empty translate response')
+      return text
     }
     return (((completion.choices[0] || {})?.message || {}).content || '')
       .replaceAll('```markdown', '')
       .replaceAll('```', '')
       .trim()
   } catch (error) {
-    consola.error('Translation error:', (error instanceof Error) ? error?.message : error)
+    consola.error('❌ Translation error:', (error instanceof Error) ? error?.message : error)
     return text
   }
 }
 
 async function clearDirectory(dir: string) {
   try {
-    await fs.access(dir)
-    const files = await fs.readdir(dir)
-    await Promise.all(files.map(file =>
-      fs.unlink(path.join(dir, file))
-    ))
+    await fs.rm(dir, { recursive: true, force: true })
   } catch {
-    await fs.mkdir(dir, { recursive: true })
+    // Ignore if directory doesn't exist
   }
+  await fs.mkdir(dir, { recursive: true })
+}
+
+async function getMarkdownFiles(dir: string): Promise<string[]> {
+  const entries = await fs.readdir(dir, { recursive: true, withFileTypes: true })
+  return entries
+    .filter(entry => entry.isFile() && entry.name.endsWith('.md'))
+    .map(entry => {
+      return path.relative(dir, path.join(entry.parentPath, entry.name))
+    })
 }
 
 async function main() {
@@ -99,7 +106,7 @@ async function main() {
 
     // Get source files
     const sourceDir = path.join(CONTENT_PATH, sourceLang)
-    const files = (await fs.readdir(sourceDir)).filter(f => f.endsWith('.md'))
+    const files = await getMarkdownFiles(sourceDir)
 
     // Process target languages
     for (const targetLang of locales.filter(l => l !== sourceLang)) {
@@ -112,7 +119,7 @@ async function main() {
         const sourcePath = path.join(sourceDir, file)
         const targetPath = path.join(targetDir, file)
 
-        consola.log(`Translating ${file}...`)
+        consola.log(`Translating ${file} ...`)
         const mainData = await fs.readFile(sourcePath, 'utf8')
         const translated = await translateText(
           mainData,
@@ -120,13 +127,15 @@ async function main() {
           `${localeInfo[targetLang]?.name} (${localeInfo[targetLang]?.code || targetLang})`
         )
 
+        // Create nested directory structure
+        await fs.mkdir(path.dirname(targetPath), { recursive: true })
         await fs.writeFile(targetPath, translated)
       }
 
       consola.log(`✅ Successfully translated ${files.length} files to ${targetLang}`)
     }
   } catch (error) {
-    consola.error('Error:', (error instanceof Error) ? error?.message : error)
+    consola.error('❌ Error:', (error instanceof Error) ? error?.message : error)
   } finally {
     rl.close()
   }
