@@ -129,4 +129,4 @@ Consumer 2: Processing task (1s): .
 
 ---
 
-[↑ Theory](docs/1_page.md) | [Example 2: Balcony and Garden →](docs/demo/2_page.md)
+[↑ Theory](../1_page.md) | [Example 2: Balcony and Garden →](2_page.md)
