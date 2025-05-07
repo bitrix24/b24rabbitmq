@@ -4,8 +4,6 @@
  * @link https://github.com/uuidjs/uuid ver 11.1.0
  */
 
-import { randomFillSync } from 'node:crypto'
-
 type V7State = {
   // time, milliseconds
   msecs?: number
@@ -15,31 +13,22 @@ type V7State = {
 
 const _state: V7State = {}
 
-const isBrowser = typeof window !== 'undefined'
 
-function initRng () {
-  try {
-    const rnds8Pool = new Uint8Array(256) // # of random values to pre-allocate
-    let poolPtr = rnds8Pool.length
-
-    return {
-      rng: () => {
-        if (poolPtr > rnds8Pool.length - 16) {
-          randomFillSync(rnds8Pool)
-          poolPtr = 0
-        }
-        return rnds8Pool.slice(poolPtr, (poolPtr += 16))
-      }
-    }
-  } catch {
-    throw new Error('Node.js crypto module not available');
+function getCrypto(): Crypto {
+  if (typeof window !== 'undefined' && window.crypto) {
+    return window.crypto;
   }
+  if (typeof globalThis.crypto !== 'undefined') {
+    return globalThis.crypto;
+  }
+
+  throw new Error('Crypto API not available');
 }
 
-function initRngBrowser () {
-  const crypto = window.crypto || (window as any).msCrypto
+function initRng () {
+  const crypto = getCrypto();
   if (!crypto?.getRandomValues) {
-    throw new Error('Web Crypto API not available')
+    throw new Error('Crypto API not available')
   }
 
   return {
@@ -166,18 +155,10 @@ export default function uuidv7(): string {
   const buf = undefined
   const offset = undefined
 
-  let rngFunction: () => Uint8Array
-
   const now = Date.now()
-  if (isBrowser) {
-    const { rng } = initRngBrowser()
-    rngFunction = rng
-  } else {
-    const { rng } = initRng()
-    rngFunction = rng
-  }
+  const { rng } = initRng()
 
-  const randoms = rngFunction()
+  const randoms = rng()
   updateV7State(_state, now, randoms)
 
   const bytes: Uint8Array = v7Bytes(
