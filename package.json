@@ -1,6 +1,6 @@
 {
   "name": "@bitrix24/b24rabbitmq",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "author": "Bitrix",
   "description": "Library for integrating Bitrix24 applications with RabbitMQ",
   "keywords": [
