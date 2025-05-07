@@ -1,8 +1,8 @@
 # Example 1: Uniform Distribution
 
-> You can monitor the broker's operation either through a browser or with a script on the [Usage →](../3_page.md) page.
-
-Example source: [RabbitMQ tutorial 2 — Task Queue](https://habr.com/ru/articles/150134/)
+> **WARNING**
+> We are still updating this page
+> Some data may be missing here — we will complete it shortly.
 
 > Need to create 1 `queue` and 3 `consumer`s.
 >

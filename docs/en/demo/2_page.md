@@ -1,6 +1,8 @@
 # Example 2: Balcony and Garden
 
-Source of the example [Diving into the Rabbit Hole](https://php.zone/post/rabbitmq)
+> **WARNING**
+> We are still updating this page
+> Some data may be missing here — we will complete it shortly.
 
 > Let the rabbits (messages) jump into the hole (`exchange`).
 > The rabbit reaches the room (`queue`) and tries to exit through the door (`consumer`).

@@ -1,4 +1,9 @@
 # Terms:  
+
+> **WARNING**
+> We are still updating this page
+> Some data may be missing here — we will complete it shortly.
+
 ## Message `[AMQPMessage]`  
 This is the smallest unit of information within the message broker and processing service that can be processed.  
 
