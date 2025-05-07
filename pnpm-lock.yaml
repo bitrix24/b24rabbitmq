@@ -18,6 +18,9 @@ importers:
       '@types/amqplib':
         specifier: ^0.10.7
         version: 0.10.7
+      '@types/node':
+        specifier: ^22.15.11
+        version: 22.15.11
       dotenv:
         specifier: ^16.5.0
         version: 16.5.0
