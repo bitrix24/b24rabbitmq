@@ -8,8 +8,7 @@ const COPYRIGHT_DATE = (new Date()).getFullYear()
 
 export default defineBuildConfig(
 	[
-		'esm',
-		'commonjs'
+		'esm'
 	].map((formatTypeParam) => initConfig(formatTypeParam))
 )
 
