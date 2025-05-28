@@ -1,6 +1,6 @@
 {
   "name": "@bitrix24/b24rabbitmq",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "author": "Bitrix",
   "description": "Library for integrating Bitrix24 applications with RabbitMQ",
   "keywords": [
@@ -29,14 +29,14 @@
     "consola": "^3.4.2"
   },
   "devDependencies": {
-    "esbuild": "^0.25.4",
+    "esbuild": "^0.25.5",
     "typescript": "^5.8.3",
     "unbuild": "^3.5.0",
     "eslint-config-unjs": "^0.4.2",
     "@types/amqplib": "^0.10.7",
     "tsx": "^4.19.4",
-    "@types/node": "^22.15.11",
-    "openai": "^4.97.0",
+    "@types/node": "^22.15.23",
+    "openai": "^4.103.0",
     "dotenv": "^16.5.0"
   },
   "peerDependencies": {
