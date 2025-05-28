@@ -50,7 +50,9 @@ export interface Message {
   date: string
   entityTypeId?: number
   entityId?: number
+  retryCount?: number
   additionalData?: Record<string, any>
+  [key: string]: any
 }
 
 export interface MessageOptions extends amqp.Options.Publish {
