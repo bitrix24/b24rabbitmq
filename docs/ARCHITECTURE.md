@@ -8,7 +8,7 @@
           RabbitMQBase (abstract)
           ├─ config: RabbitMQConfig
           ├─ connection / channel        (amqplib)
-          ├─ connect()                   ← abstract, overridden
+          ├─ connect()                   ← throws unless overridden
           ├─ setupExchanges()/registerExchange()
           ├─ setupQueues()/registerQueue()   (priority + dead-letter args)
           └─ disconnect()
@@ -40,7 +40,7 @@
 
 **Consumer**: `initialize()` → `connect()` → `setupExchanges()` → `setupQueues()`. Register a per-queue async handler with `registerHandler(queue, handler)`, then `consume(queue)`. The handler receives `(parsedContent, ack, nack)`; on a thrown error the message is `nack`ed without requeue (dead-letter territory).
 
-**RPC**: `call()` creates an exclusive reply queue, publishes the request with `correlationId` + `replyTo`, and resolves the promise when the matching reply arrives (or rejects on timeout, default 5000ms).
+**RPC** *(currently broken — see Known limitations)*: `call()` is intended to create an exclusive reply queue, publish the request with `correlationId` + `replyTo`, and resolve the promise when the matching reply arrives (or reject on timeout, default 5000ms).
 
 ## Build & distribution
 

@@ -9,6 +9,10 @@ CI lints the title and every commit.
 
 <!-- What does this PR change and why? -->
 
+## Linked issue
+
+<!-- Closes #N / Refs #N -->
+
 ## Type of change
 
 - [ ] fix — bug fix

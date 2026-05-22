@@ -1,20 +1,70 @@
 # @bitrix24/b24rabbitmq
 
-Working with the RabbitMQ queue broker.
+[![CI](https://github.com/bitrix24/b24rabbitmq/actions/workflows/ci.yml/badge.svg)](https://github.com/bitrix24/b24rabbitmq/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@bitrix24/b24rabbitmq.svg)](https://www.npmjs.com/package/@bitrix24/b24rabbitmq)
+[![license](https://img.shields.io/npm/l/@bitrix24/b24rabbitmq.svg)](LICENSE)
+[![node](https://img.shields.io/node/v/@bitrix24/b24rabbitmq.svg)](package.json)
 
-Allows to configure `exchanges`, `queues`. Includes templates for `Producer`, `Consumer` in NodeJs.
+Config-driven `Producer`, `Consumer` and `RPC` primitives over [`amqplib`](https://github.com/amqp-node/amqplib) for integrating Bitrix24 applications with RabbitMQ. Declare your exchanges, queues and bindings once; get priority and dead-letter handling out of the box.
 
-> We will add PHP support soon.
+> **Status:** actively being reanimated (2026), pre-v0.1. See [`PROJECT-BRIEF.md`](PROJECT-BRIEF.md) for the roadmap and known limitations. PHP templates are planned (see roadmap).
 
-> **WARNING**
-> We are still updating this page
-> Some data may be missing here — we will complete it shortly.
+## Quickstart
+
+Install the library and the `amqplib` peer dependency:
+
+```bash
+pnpm add @bitrix24/b24rabbitmq amqplib
+# or: npm i @bitrix24/b24rabbitmq amqplib
+```
+
+Spin up a local RabbitMQ (with the management UI on http://localhost:15672):
+
+```bash
+docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+```
+
+Send and receive a message end-to-end:
+
+```typescript
+import {
+  RabbitMQProducer,
+  RabbitMQConsumer,
+  type RabbitMQConfig
+} from '@bitrix24/b24rabbitmq'
+
+const config: RabbitMQConfig = {
+  connection: { url: 'amqp://localhost' },
+  exchanges: [{ name: 'demo.events.v1', type: 'direct', options: { durable: true } }],
+  queues: [
+    {
+      name: 'demo.v1',
+      options: { durable: true },
+      bindings: [{ exchange: 'demo.events.v1', routingKey: 'event.succeeded' }]
+    }
+  ]
+}
+
+// Consumer
+const consumer = new RabbitMQConsumer(config)
+await consumer.initialize()
+consumer.registerHandler('demo.v1', async (msg, ack) => {
+  console.log('received', msg)
+  ack()
+})
+await consumer.consume('demo.v1')
+
+// Producer
+const producer = new RabbitMQProducer(config)
+await producer.initialize()
+await producer.publish('demo.events.v1', 'event.succeeded', { hello: 'world' })
+```
 
 ## Configuration example
 
 ```typescript
 // rabbitmq.config.ts
-import type { RabbitMQConfig } from '~/rabbitmq/types';
+import type { RabbitMQConfig } from '@bitrix24/b24rabbitmq';
 
 export const rabbitMQConfig: RabbitMQConfig = {
   connection: {
@@ -51,10 +101,11 @@ export const rabbitMQConfig: RabbitMQConfig = {
 
 ```typescript
 // producers/demo1-producer.ts
-import { RabbitMQProducer } from '~/rabbitmq/producer';
+import { RabbitMQProducer } from '@bitrix24/b24rabbitmq';
 import { rabbitMQConfig } from '../rabbitmq.config';
 
 const producer = new RabbitMQProducer(rabbitMQConfig);
+await producer.initialize();
 
 export async function sendTask(dots: string) {
   await producer.publish(
@@ -78,10 +129,15 @@ More examples can be found in [documentation](#documentation) and in [@bitrix24/
 
 ## Documentation
 
+* [Project brief & roadmap](PROJECT-BRIEF.md)
+* [Architecture](docs/ARCHITECTURE.md)
+* [Contributing](CONTRIBUTING.md)
 * [CHANGELOG](CHANGELOG.md)
 * [Terms](docs/en/1_page.md)
   * [Demo 1: Even Distribution](docs/en/demo/1_page.md)
   * [Demo 2: Balcony and Garden](docs/en/demo/2_page.md)
+
+> Documentation is also translated to Russian — run `pnpm translate-docs` to generate `docs/ru` locally.
 
 ## Read
 

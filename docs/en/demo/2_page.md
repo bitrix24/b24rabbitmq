@@ -1,8 +1,8 @@
 # Example 2: Balcony and Garden
 
-> **WARNING**
-> We are still updating this page
-> Some data may be missing here — we will complete it shortly.
+> **Note:** this is an illustrative retry/dead-letter pattern. Re-publishing from a
+> consumer is done through a `RabbitMQProducer` (a consumer cannot publish). The
+> snippets below reflect the intended API.
 
 > Let the rabbits (messages) jump into the hole (`exchange`).
 > The rabbit reaches the room (`queue`) and tries to exit through the door (`consumer`).
@@ -99,7 +99,7 @@ Bind to `exchange` with the key `failed`.
 
 ```typescript
 // rabbitmq.config.ts
-import type { RabbitMQConfig } from '~/rabbitmq/types';
+import type { RabbitMQConfig } from '@bitrix24/b24rabbitmq';
 
 export const rabbitMQConfig: RabbitMQConfig = {
   connection: {
@@ -180,10 +180,13 @@ export const rabbitMQConfig: RabbitMQConfig = {
 ### Main queue processing consumer:
 ```typescript
 // consumers/main-consumer.ts
-import { RabbitMQConsumer } from '~/rabbitmq/consumer';
+import { RabbitMQConsumer, RabbitMQProducer } from '@bitrix24/b24rabbitmq';
 import { rabbitMQConfig } from '../rabbitmq.config';
 
 const consumer = new RabbitMQConsumer(rabbitMQConfig);
+const producer = new RabbitMQProducer(rabbitMQConfig);
+await consumer.initialize();
+await producer.initialize();
 
 consumer.registerHandler('demo2.events.subscriptions-service.v1', async (msg, ack) => {
   try {
@@ -203,7 +206,7 @@ consumer.registerHandler('demo2.events.subscriptions-service.v1', async (msg, ac
 
     if (newRetryCount < 5) {
       // Send to the balcony with a delay
-      await consumer.publish(
+      await producer.publish(
         'demo2.service.v1',
         'delay.6000',
         msg,
@@ -213,7 +216,7 @@ consumer.registerHandler('demo2.events.subscriptions-service.v1', async (msg, ac
       );
     } else {
       // Send to the garden
-      await consumer.publish(
+      await producer.publish(
         'demo2.service.v1',
         'failed',
         { ...msg, error: error.message }
@@ -222,21 +225,26 @@ consumer.registerHandler('demo2.events.subscriptions-service.v1', async (msg, ac
     ack();
   }
 });
+
+await consumer.consume('demo2.events.subscriptions-service.v1');
 ```
 
 ### Problematic messages processing consumer (garden):
 ```typescript
 // consumers/failed-consumer.ts
-import { RabbitMQConsumer } from '~/rabbitmq/consumer';
+import { RabbitMQConsumer, RabbitMQProducer } from '@bitrix24/b24rabbitmq';
 import { rabbitMQConfig } from '../rabbitmq.config';
 
 const consumer = new RabbitMQConsumer(rabbitMQConfig);
+const producer = new RabbitMQProducer(rabbitMQConfig);
+await consumer.initialize();
+await producer.initialize();
 
 consumer.registerHandler('demo2.subscriptions-service.failed.v1', async (msg, ack) => {
   try {
     // Manual processing (feed the rabbit)
     if (shouldRetry(msg)) {
-      await consumer.publish(
+      await producer.publish(
         'demo2.events.v1',
         'event.succeeded',
         msg.originalMessage
@@ -254,15 +262,18 @@ consumer.registerHandler('demo2.subscriptions-service.failed.v1', async (msg, ac
     ack();
   }
 });
+
+await consumer.consume('demo2.subscriptions-service.failed.v1');
 ```
 
 ### Producer for sending messages:
 ```typescript
 // producers/event-producer.ts
-import { RabbitMQProducer } from '~/rabbitmq/producer';
+import { RabbitMQProducer } from '@bitrix24/b24rabbitmq';
 import { rabbitMQConfig } from '../rabbitmq.config';
 
 const producer = new RabbitMQProducer(rabbitMQConfig);
+await producer.initialize();
 
 export async function sendEvent(message: any) {
   await producer.publish(
@@ -275,13 +286,14 @@ export async function sendEvent(message: any) {
 ```
 
 ### Starting consumers:
-bash
+
+```bash
 # Start 3 main queue handlers
 npm run start:consumer -- --queue=demo2.events.subscriptions-service.v1 --instances=3
 
 # Start problematic messages handler
 npm run start:consumer -- --queue=demo2.subscriptions-service.failed.v1
-
+```
 
 ### Operation mechanism:
 1. Messages are published to `demo2.events.v1` with routing key `event.succeeded`

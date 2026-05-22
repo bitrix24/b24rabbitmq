@@ -12,7 +12,7 @@ A small, dependency-light TypeScript library that wraps [`amqplib`](https://gith
 - **Package**: `@bitrix24/b24rabbitmq` (npm, public, MIT)
 - **Module format**: ESM only (built with `unbuild`)
 - **Peer dependency**: `amqplib` ^0.10
-- **Reference architecture / process**: [`bitrix24/templates-mcp`](https://github.com/bitrix24/templates-mcp) — we mirror its CI, commitlint, renovate and test discipline (but not its Nuxt runtime; this is a plain library).
+- **Reference architecture / process**: [`bitrix24/templates-mcp`](https://github.com/bitrix24/templates-mcp) — we mirror its CI, commitlint, renovate and test discipline (but not its Nuxt runtime; this is a plain library). The `skills/` directory there is MCP-agent-specific and is intentionally not used here.
 
 ## Technology stack
 
@@ -38,7 +38,7 @@ src/
 ├── consumer.ts   # RabbitMQConsumer: initialize, connect + reconnect, registerHandler, consume
 ├── rpc.ts        # RabbitRPC: request/reply over a producer + consumer pair
 └── tools/
-    └── uuidv7.ts  # dependency-free UUIDv7 generator (correlation ids)
+    └── uuidv7.ts  # internal: dependency-free UUIDv7 generator for RPC correlation ids (not part of the public exports)
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the runtime model.

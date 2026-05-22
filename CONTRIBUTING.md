@@ -34,6 +34,17 @@ All of `lint`, `typecheck`, `test`, `build` run in CI on every PR. Run them loca
 - Broker-touching code (`base`/`producer`/`consumer`/`rpc`) should be tested against a **mocked `amqplib` channel** — do not require a live RabbitMQ in unit tests.
 - Every behavioural change ships with a test. When fixing a known bug, add a regression test that fails first.
 
+## Branches
+
+Never commit directly to `main`. Branch off it using one of these prefixes:
+
+- `fix/*` — bug fixes
+- `feat/*` — new features
+- `chore/*` / `docs/*` — tooling, deps, documentation
+- `claude/*` — AI-assisted work
+
+Open a PR back into `main`; CI must be green before merge.
+
 ## Commit & PR conventions
 
 - Commits and PR titles follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`, …). `commitlint` enforces this in CI.
