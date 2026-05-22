@@ -22,6 +22,7 @@ pnpm install
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm test` | Run the vitest suite once |
 | `pnpm test:watch` | Vitest in watch mode |
+| `pnpm test:coverage` | Vitest with a v8 coverage report |
 | `pnpm build` | Build ESM bundle + types via unbuild |
 
 All of `lint`, `typecheck`, `test`, `build` run in CI on every PR. Run them locally before pushing.
@@ -36,6 +37,7 @@ See [`.github/contributing/testing.md`](.github/contributing/testing.md) for con
 - Pure logic (e.g. `uuidv7`) is tested directly.
 - Broker-touching code (`base`/`producer`/`consumer`/`rpc`) should be tested against a **mocked `amqplib` channel** — do not require a live RabbitMQ in unit tests.
 - Every behavioural change ships with a test. When fixing a known bug, add a regression test that fails first.
+- **Phase 1 correctness fixes** (see [`PROJECT-BRIEF.md`](PROJECT-BRIEF.md)) must land **after** the characterization tests that lock current behaviour — open/merge those first so the refactor has a baseline.
 
 ## Branches
 

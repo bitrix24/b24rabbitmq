@@ -21,7 +21,7 @@ Typically, the consumer is in a state of waiting for messages.
 ## Queue `[queue]`  
 RabbitMQ stores messages in a `queue`. It has no limit on the number of messages and can accept an arbitrarily large number of them—it can be considered an infinite buffer.  
 
-Any number of ´producer´s can send messages to one `queue`, and any number of `consumer`s can receive messages from one `queue`.  
+Any number of `producer`s can send messages to one `queue`, and any number of `consumer`s can receive messages from one `queue`.  
 
 > `Producer`, `consumer`, and `RabbitMQ` do not have to be on the same physical machine; usually, they are on different ones.  
 

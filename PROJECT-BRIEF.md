@@ -33,7 +33,7 @@ A small, dependency-light TypeScript library that wraps [`amqplib`](https://gith
 src/
 ├── index.ts      # barrel: re-exports everything below
 ├── types.ts      # RabbitMQConfig, ExchangeParams, QueueParams, Message, MessageOptions, MessageHandler
-├── base.ts       # RabbitMQBase: connect (abstract), setup/register exchanges & queues, disconnect
+├── base.ts       # RabbitMQBase: connect (throws unless overridden), setup/register exchanges & queues, disconnect
 ├── producer.ts   # RabbitMQProducer: initialize, connect, publish
 ├── consumer.ts   # RabbitMQConsumer: initialize, connect + reconnect, registerHandler, consume
 ├── rpc.ts        # RabbitRPC: request/reply over a producer + consumer pair
@@ -71,7 +71,7 @@ Known defects to fix (with regression tests first):
 
 - **License**: MIT
 - **Module**: ESM only; no CommonJS unless a consumer needs it
-- **Dependencies**: keep runtime deps minimal (`@bitrix24/b24jssdk` for logging; `amqplib` is a peer)
+- **Dependencies**: keep runtime deps minimal (`@bitrix24/b24jssdk` for logging; `amqplib` is a peer). `b24jssdk` is a deliberate choice for Bitrix24-ecosystem consistency despite its transitive weight (axios/luxon); its logger is not wired into `src/` yet — that happens in Phase 1 alongside the `console.*` migration.
 - **Tests**: every behavioural change ships with a vitest test; broker-touching logic uses a mocked `amqplib` channel
 - **Commits**: Conventional Commits, enforced by commitlint in CI
 - **Secrets**: never committed

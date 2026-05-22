@@ -38,7 +38,7 @@
     "@vitest/coverage-v8": "^4.1.7",
     "eslint": "^9.39.4",
     "eslint-config-unjs": "^0.6.2",
-    "typescript": "^6.0.3",
+    "typescript": "^5.9.2",
     "unbuild": "^3.6.1",
     "vitest": "^4.1.7"
   },

@@ -11,6 +11,7 @@ function timePrefix(uuid: string): string {
 describe('uuidv7', () => {
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it('produces a canonical lowercase uuid string', () => {
@@ -29,7 +30,7 @@ describe('uuidv7', () => {
   })
 
   it('encodes the current time in the leading 48 bits', () => {
-    vi.useFakeTimers()
+    vi.useFakeTimers({ toFake: ['Date', 'performance'] })
     const now = 1_700_000_000_000
     vi.setSystemTime(now)
 
@@ -41,7 +42,7 @@ describe('uuidv7', () => {
   })
 
   it('is non-decreasing across calls as time advances (strictly)', () => {
-    vi.useFakeTimers()
+    vi.useFakeTimers({ toFake: ['Date', 'performance'] })
     vi.setSystemTime(1_700_000_000_000)
     const first = timePrefix(uuidv7())
     vi.setSystemTime(1_700_000_001_000)
@@ -50,7 +51,7 @@ describe('uuidv7', () => {
   })
 
   it('does not regress the time prefix within the same millisecond', () => {
-    vi.useFakeTimers()
+    vi.useFakeTimers({ toFake: ['Date', 'performance'] })
     vi.setSystemTime(1_700_000_000_000)
     let prev = timePrefix(uuidv7())
     for (let i = 0; i < 500; i++) {

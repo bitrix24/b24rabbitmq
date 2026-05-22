@@ -24,13 +24,8 @@
     "declaration": true,
     "esModuleInterop": true,
     "lib": [
-      "ESNext",
-      "dom",
-      "dom.iterable",
-      "webworker"
+      "ESNext"
     ],
-    "jsx": "preserve",
-    "jsxImportSource": "vue",
     "types": [
       "node"
     ],

@@ -30,8 +30,7 @@ function initConfig(formatTypeParam: string): BuildConfig
 		resolve: {}
 	}
 
-	// eslint-disable-next-line
-	let hooks: Record<string, Function> = {}
+	let hooks: BuildConfig['hooks'] = {}
 
 	switch(formatType)
 	{

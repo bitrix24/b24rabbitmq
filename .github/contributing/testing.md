@@ -53,7 +53,9 @@ export function makeFakeChannel() {
     bindQueue: vi.fn().mockResolvedValue({}),
     prefetch: vi.fn().mockResolvedValue(undefined),
     publish: vi.fn().mockReturnValue(true),
+    sendToQueue: vi.fn().mockReturnValue(true),
     consume: vi.fn().mockResolvedValue({ consumerTag: 't' }),
+    deleteQueue: vi.fn().mockResolvedValue({ messageCount: 0 }),
     ack: vi.fn(),
     nack: vi.fn(),
     close: vi.fn().mockResolvedValue(undefined)
