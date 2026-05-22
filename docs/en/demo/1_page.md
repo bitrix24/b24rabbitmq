@@ -1,9 +1,5 @@
 # Example 1: Uniform Distribution
 
-> **WARNING**
-> We are still updating this page
-> Some data may be missing here — we will complete it shortly.
-
 > Need to create 1 `queue` and 3 `consumer`s.
 >
 > Let the `producer` send a message with dots. 1 dot = 1 second delay in the `consumer`.
@@ -14,7 +10,7 @@
 
 ```typescript
 // rabbitmq.config.ts
-import type { RabbitMQConfig } from '~/rabbitmq/types';
+import type { RabbitMQConfig } from '@bitrix24/b24rabbitmq';
 
 export const rabbitMQConfig: RabbitMQConfig = {
   connection: {
@@ -50,10 +46,11 @@ export const rabbitMQConfig: RabbitMQConfig = {
 ### Producer:
 ```typescript
 // producers/demo1-producer.ts
-import { RabbitMQProducer } from '~/rabbitmq/producer';
+import { RabbitMQProducer } from '@bitrix24/b24rabbitmq';
 import { rabbitMQConfig } from '../rabbitmq.config';
 
 const producer = new RabbitMQProducer(rabbitMQConfig);
+await producer.initialize();
 
 export async function sendTask(dots: string) {
   await producer.publish(
@@ -76,10 +73,11 @@ tasks.forEach(async (task) => {
 ### Consumer:
 ```typescript
 // consumers/demo1-consumer.ts
-import { RabbitMQConsumer } from '~/rabbitmq/consumer';
+import { RabbitMQConsumer } from '@bitrix24/b24rabbitmq';
 import { rabbitMQConfig } from '../rabbitmq.config';
 
 const consumer = new RabbitMQConsumer(rabbitMQConfig);
+await consumer.initialize();
 
 consumer.registerHandler('demo1.v1', async (msg, ack) => {
   try {
@@ -96,17 +94,22 @@ consumer.registerHandler('demo1.v1', async (msg, ack) => {
     ack();
   }
 });
+
+await consumer.consume('demo1.v1');
 ```
 
 ### Launch:
 1. Start 3 consumer instances:
-bash
-npx ts-node consumers/demo1-consumer.ts
 
+```bash
+npx tsx consumers/demo1-consumer.ts
+```
 
 2. Start the producer:
-bash
-npx ts-node producers/demo1-producer.ts
+
+```bash
+npx tsx producers/demo1-producer.ts
+```
 
 
 ### Mechanism:

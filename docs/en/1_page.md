@@ -1,9 +1,5 @@
 # Terms:  
 
-> **WARNING**
-> We are still updating this page
-> Some data may be missing here — we will complete it shortly.
-
 ## Message `[AMQPMessage]`  
 This is the smallest unit of information within the message broker and processing service that can be processed.  
 
@@ -82,4 +78,4 @@ Example:
 * (0.5 / 0.4 ) * 1 = 1.25 = 2  
 ----  
 
-[↑ Contents](../../README.md) | [Configuration →](2_page.md)
+[↑ Contents](../../README.md) | [Demo 1: Even Distribution →](demo/1_page.md)
