@@ -27,7 +27,11 @@ pnpm install
 
 All of `lint`, `typecheck`, `test`, `build` run in CI on every PR. Run them locally before pushing.
 
+> Using an AI coding assistant? Operational rules for agents live in [`AGENTS.md`](AGENTS.md).
+
 ## Tests
+
+See [`.github/contributing/testing.md`](.github/contributing/testing.md) for conventions and recipes (mocking `amqplib`, fake timers, single-test runs).
 
 - Tests live in `tests/**/*.test.ts` and run on [vitest](https://vitest.dev).
 - Pure logic (e.g. `uuidv7`) is tested directly.
