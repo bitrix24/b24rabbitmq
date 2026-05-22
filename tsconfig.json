@@ -19,7 +19,7 @@
     "moduleDetection": "force",
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "useDefineForClassFields": true,
     "noImplicitThis": true,
     "declaration": true,
