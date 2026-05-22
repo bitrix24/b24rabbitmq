@@ -25,24 +25,19 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "translate-docs": "tsx tools/translate.docs.ts"
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "consola": "^3.4.2"
+    "@bitrix24/b24jssdk": "^1.1.2"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",
     "@types/amqplib": "^0.10.8",
-    "@types/node": "^25.9.1",
+    "@types/node": "^20.19.9",
     "@vitest/coverage-v8": "^4.1.7",
-    "dotenv": "^17.4.2",
-    "esbuild": "^0.28.0",
     "eslint": "^9.39.4",
     "eslint-config-unjs": "^0.6.2",
-    "openai": "^6.39.0",
-    "tsx": "^4.22.3",
     "typescript": "^6.0.3",
     "unbuild": "^3.6.1",
     "vitest": "^4.1.7"

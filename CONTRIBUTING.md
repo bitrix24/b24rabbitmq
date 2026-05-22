@@ -23,7 +23,6 @@ pnpm install
 | `pnpm test` | Run the vitest suite once |
 | `pnpm test:watch` | Vitest in watch mode |
 | `pnpm build` | Build ESM bundle + types via unbuild |
-| `pnpm translate-docs` | Translate `docs/en` → `docs/ru` (needs `DEEPSEEK_API_KEY`) |
 
 All of `lint`, `typecheck`, `test`, `build` run in CI on every PR. Run them locally before pushing.
 

@@ -6,7 +6,7 @@ Guidance for AI coding agents (Claude Code, Cursor, Copilot, etc.) working in th
 
 ## Project overview
 
-`@bitrix24/b24rabbitmq` is a small, dependency-light **ESM** TypeScript library that wraps [`amqplib`](https://github.com/amqp-node/amqplib) with config-driven `Producer`, `Consumer` and `RPC` primitives for integrating Bitrix24 applications with RabbitMQ. `amqplib` is a **peer** dependency; the only runtime dependency is `consola`. Build is ESM-only via `unbuild`.
+`@bitrix24/b24rabbitmq` is a small, dependency-light **ESM** TypeScript library that wraps [`amqplib`](https://github.com/amqp-node/amqplib) with config-driven `Producer`, `Consumer` and `RPC` primitives for integrating Bitrix24 applications with RabbitMQ. `amqplib` is a **peer** dependency; the only runtime dependency is `@bitrix24/b24jssdk` (used for its logger). Build is ESM-only via `unbuild`.
 
 The project is being reanimated (pre-`v0.1`). Several parts of the runtime code are **knowingly broken or incomplete** and scheduled for a test-first refactor — see [Known limitations](#known-limitations) before "fixing" something that looks wrong.
 
@@ -23,8 +23,7 @@ src/
 └── tools/
     └── uuidv7.ts  # internal UUIDv7 generator (correlation ids) — NOT exported
 tests/            # vitest specs, *.test.ts
-tools/            # dev scripts (docs translation), not shipped
-docs/en/          # English docs (terms + demos); docs/ru is generated & gitignored
+docs/en/          # English docs (terms + demos); docs/ru is produced by an AI-agent skill (see issue #3)
 ```
 
 ## Commands
@@ -40,7 +39,6 @@ docs/en/          # English docs (terms + demos); docs/ru is generated & gitigno
 | `pnpm test:watch` | Vitest in watch mode |
 | `pnpm test:coverage` | Vitest with v8 coverage report |
 | `pnpm build` | Build ESM bundle + `.d.mts` via unbuild |
-| `pnpm translate-docs` | Generate `docs/ru` from `docs/en` (needs `DEEPSEEK_API_KEY`) |
 
 Before opening a PR, all four gates must pass locally: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`. CI runs them on every PR (tests on Node 20 **and** 22).
 
@@ -50,9 +48,9 @@ Before opening a PR, all four gates must pass locally: `pnpm lint`, `pnpm typech
 - **Branch off `main`** — never commit to it directly. Prefixes: `fix/*`, `feat/*`, `chore/*`, `docs/*`, `claude/*`. One logical change per PR.
 - **ESM only.** No CommonJS. Use `import`/`export`, top-level `await` is fine in docs examples.
 - **Keep the dependency surface minimal.** Don't add runtime deps; `amqplib` stays a peer dependency.
-- **Logging goes through `consola`**, not `console.*`. (Existing `console.*` calls are a known defect being migrated — match the target, not the legacy.)
-- **Public API = whatever `src/index.ts` re-exports.** Don't widen it casually; `tools/uuidv7.ts` is intentionally internal.
-- **Docs are English** in `docs/en`; `docs/ru` is generated (gitignored), don't hand-edit it.
+- **Logging goes through the `@bitrix24/b24jssdk` logger**, not `console.*`. (Existing `console.*` calls are a known defect being migrated — match the target, not the legacy.)
+- **Public API = whatever `src/index.ts` re-exports.** Don't widen it casually; `src/tools/uuidv7.ts` is intentionally internal.
+- **Docs are English** in `docs/en`; `docs/ru` is produced by an AI-agent skill (issue #3), don't hand-edit it.
 
 ## Library source
 
@@ -71,7 +69,7 @@ These are **intentionally not yet fixed**. Confirm against [`PROJECT-BRIEF.md`](
 1. **RPC doesn't work** — `RabbitRPC.call()` never calls `consumer.consume()` on its reply queue, and the correlation id is sent via AMQP `properties` but the consumer only surfaces the parsed JSON body to handlers.
 2. **Unsafe consumer reconnect** — `throw` inside a `setTimeout` callback crashes the process; `connect()` is retried without `await`.
 3. **`x-max-priority` lost** — `base.ts registerQueue` overwrites `arguments` when `deadLetter` is set instead of merging.
-4. **`console.*` logging** — should be `consola`.
+4. **`console.*` logging** — should use the `@bitrix24/b24jssdk` logger.
 5. **`any` / missing JSDoc** on public methods and in `types.ts` / `rpc.ts`.
 
 ## Changing behavior

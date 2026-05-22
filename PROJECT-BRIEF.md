@@ -24,8 +24,8 @@ A small, dependency-light TypeScript library that wraps [`amqplib`](https://gith
 | Build | `unbuild` (rollup + esbuild) | ESM + `.d.mts`, banner injection |
 | Lint | `eslint-config-unjs` | Matches Bitrix24 OSS conventions |
 | Tests | `vitest` | Fast, ESM-native |
-| Logging | `consola` | Already a dependency; replace stray `console.*` |
-| Docs i18n | DeepSeek via `tools/translate.docs.ts` | EN → RU markdown translation |
+| Logging | `@bitrix24/b24jssdk` logger | Runtime dependency; will replace stray `console.*` |
+| Docs i18n | AI-agent skill (see #3) | EN → RU markdown translation, no LLM SDK dependency |
 
 ## Public API
 
@@ -58,7 +58,7 @@ Known defects to fix (with regression tests first):
 2. **`consumer.ts` reconnect is unsafe.** `throw` inside the `setTimeout` callback crashes the process; `this.connect()` is called without `await`, so failures are swallowed. Replace with an awaited, bounded backoff loop and re-establish handlers/consumers after reconnect.
 3. **`producer.ts` has no reconnect** and calls `channel.prefetch` (meaningless on a publish channel). Consider publisher confirms for `publish()`’s boolean return to be trustworthy. The "exchange not registered" guard is commented out — decide keep or drop.
 4. **`base.ts registerQueue`** — the `deadLetter` branch overwrites `arguments`, dropping `x-max-priority` (`// @todo fix this`). Merge arguments instead of replacing.
-5. **Logging** — replace stray `console.log`/`console.error` with `consola` (already a dependency).
+5. **Logging** — replace stray `console.log`/`console.error` with the `@bitrix24/b24jssdk` logger (runtime dependency, added for this purpose).
 
 ### Phase 2 — Capabilities (after correctness)
 
@@ -71,8 +71,8 @@ Known defects to fix (with regression tests first):
 
 - **License**: MIT
 - **Module**: ESM only; no CommonJS unless a consumer needs it
-- **Dependencies**: keep runtime deps minimal (`consola` only; `amqplib` is a peer)
+- **Dependencies**: keep runtime deps minimal (`@bitrix24/b24jssdk` for logging; `amqplib` is a peer)
 - **Tests**: every behavioural change ships with a vitest test; broker-touching logic uses a mocked `amqplib` channel
 - **Commits**: Conventional Commits, enforced by commitlint in CI
-- **Secrets**: never committed; `DEEPSEEK_API_KEY` (docs translation) lives in `.env`
-- **Docs**: English in `docs/en`, translated to `docs/ru` (gitignored, generated)
+- **Secrets**: never committed
+- **Docs**: English in `docs/en`, translated to `docs/ru` by an AI-agent skill (see #3)
