@@ -125,14 +125,14 @@ Sequenced, smallest-coherent-PR units. Tag indicates where the work belongs.
 ### Sprint B — regional commitment
 
 - [ ] **`docs/ru` minimum** — README + Quickstart + Demo 1, via the #3 skill
-  once the reference example is provided. *[separate PR, depends on #3]*
-- [ ] **`docs/pt-BR` minimum** — open a mirror of #3 for PT-BR, run the same
-  skill. *[separate PR + new issue]*
-- [ ] **"For Bitrix24 integrators" README section** — bridge PHP→Node mental
-  model + note CloudAMQP / AWS MQ `sa-east-1` / `amqps://` TLS for LGPD.
-  *[separate PR]*
-- [ ] **Demo 2 dual subtitle** — keep "Balcony & Garden", add "Retry with
-  Dead-Letter Queue (DLQ)" for SEO and clarity. *[this branch — cheap]*
+  once the reference example is provided. *[separate PR, blocked by #3]*
+- [ ] **`docs/pt-BR` minimum** — tracked in #7 (mirror of #3); file work
+  blocked until the translation skill exists.
+- [x] **"For Bitrix24 integrators" README section** — bridge PHP→Node mental
+  model + table of broker hosting options (Docker, CloudAMQP, AWS MQ in
+  `sa-east-1` / `eu-central-1`) + `amqps://` TLS reminder for LGPD/GDPR.
+- [x] **Demo 2 dual subtitle** — kept "Balcony & Garden", added "Retry with
+  Dead-Letter Queue (DLQ)" for SEO and non-native clarity.
 
 ### Sprint C — discoverability & API reference
 

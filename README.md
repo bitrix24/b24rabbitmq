@@ -129,6 +129,29 @@ tasks.forEach(async (task) => {
 
 More examples can be found in [documentation](#documentation) and in [@bitrix24/app-template-automation-rules](https://github.com/bitrix24/app-template-automation-rules/tree/main/consumers/activities)
 
+## For Bitrix24 integrators
+
+If you build on Bitrix24, your handlers (PHP modules, application events, REST API consumers) usually talk to the outside world over HTTPS — REST calls in, webhooks out. That pattern hits two limits quickly:
+
+- a slow downstream system blocks the request and risks losing the event,
+- retries, ordering, fan-out and dead-lettering have to be reimplemented per integration.
+
+This library is for the **Node.js worker process that sits next to your Bitrix24 app and handles those messages asynchronously**. A typical layout:
+
+1. A Bitrix24 outbound webhook (or your PHP app) publishes an event to a small ingestion endpoint.
+2. The endpoint hands it to RabbitMQ via `RabbitMQProducer` ([Runnable examples](#runnable-examples) below).
+3. A `RabbitMQConsumer` worker picks it up, calls the Bitrix24 REST API (use [`@bitrix24/b24jssdk`](https://www.npmjs.com/package/@bitrix24/b24jssdk)) or any third-party service, with retries and dead-letter handling configured declaratively.
+
+**Where to run RabbitMQ** — anything that speaks AMQP works. Common choices:
+
+| Option | Notes |
+|---|---|
+| Self-hosted Docker / Kubernetes | Fastest for prototypes; see the `docker run` line in [Quickstart](#quickstart). |
+| [CloudAMQP](https://www.cloudamqp.com/) | Managed RabbitMQ in multiple regions (incl. `sa-east-1` São Paulo and EU); generous free tier for development. |
+| AWS MQ for RabbitMQ | Run inside your VPC; available in `sa-east-1`, `eu-central-1`, and others — useful when LGPD/GDPR data-residency rules apply. |
+
+For any non-local broker, use `amqps://user:pass@host/vhost` (TLS) and keep credentials in environment variables, **not** in `rabbitmq.config.ts`.
+
 ## Runnable examples
 
 Clone the repo and look at [`examples/`](examples/) for end-to-end scripts you can `pnpm exec tsx` against a local RabbitMQ:
