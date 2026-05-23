@@ -1,6 +1,6 @@
 # @bitrix24/b24rabbitmq — Project Brief
 
-> **Status**: reanimation, pre-v0.1. This document is the **single source of truth** for the plan. Issues, `POSITIONING.md`, PR descriptions and `AGENTS.md` reference items here and add detail; they do not duplicate the plan.
+> **Status**: reanimation, pre-v0.1. This document is the **single source of truth** for the plan. Issues, PR descriptions and `AGENTS.md` reference items here and add detail; they do not duplicate the plan.
 
 ## Goal
 
@@ -12,8 +12,8 @@ The release is "trustworthy" when **all** are true:
 
 - **Correctness**: zero known correctness defects with severity above *minor*; every exported public API works as documented; nothing exported that fails on first call.
 - **Tests**: every exported class has at least characterization-level vitest coverage against a mocked `amqplib` channel; uuidv7 stays at ~100%; coverage threshold floor enforced in CI.
-- **Logging**: `src/` contains zero stray `console.*`; all logging goes through the `@bitrix24/b24jssdk` logger; AMQP URL credentials are not leaked to logs.
-- **Docs**: README has a runnable Quickstart and a positioning paragraph for Bitrix24 integrators; `examples/` has at least two runnable end-to-end scenarios; `docs/en/` complete; `docs/ru` either delivered or honestly absent (no broken promise).
+- **Logging**: `src/` contains zero stray `console.*`; all logging goes through an **injectable `Logger` interface** (default is a thin console adapter); consumers wire their own logger (e.g. `@bitrix24/b24jssdk`, `consola`, `pino`); AMQP URL credentials are not leaked to logs.
+- **Docs**: README has a runnable Quickstart and a positioning paragraph for Bitrix24 integrators; `examples/` has at least two runnable end-to-end scenarios; `docs/en/` complete. English only at v0.1 — localization waits for a real user request.
 - **Process**: release is tag-gated (not free `workflow_dispatch`); npm provenance shipped; CI matrix on Node 20 + 22; branch protection on `main`; commitlint on every PR.
 
 ## Project coordinates
@@ -34,8 +34,7 @@ The release is "trustworthy" when **all** are true:
 | Build | `unbuild` (rollup + esbuild) | ESM + `.d.mts`, banner injection |
 | Lint | `eslint-config-unjs` | Matches Bitrix24 OSS conventions |
 | Tests | `vitest` | Fast, ESM-native |
-| Logging | `@bitrix24/b24jssdk` logger | Runtime dependency; will replace stray `console.*` |
-| Docs i18n | AI-agent skill (see #3) | EN → RU markdown translation, no LLM SDK dependency |
+| Logging | Injectable `Logger` interface | Default = console adapter; consumers plug in their own (e.g. `b24jssdk`, `pino`, `consola`); no Bitrix24-specific runtime dependency forced on non-Bitrix24 consumers |
 
 ## Public API
 
@@ -64,7 +63,7 @@ The work splits into four tracks. Each item carries: **what**, **why**, **accept
 ### Phase 0: Reanimation
 
 - [x] **Process foundation** — PR CI (lint + typecheck + test + build), commitlint, vitest scaffold, renovate, issue/PR templates, this brief. *(PR #1)*
-- [x] **Dependency refresh** — bring devDeps to latest stable; drop unused runtime deps; add `@bitrix24/b24jssdk` for logging; clean Dependabot alerts. *(PR #4)*
+- [x] **Dependency refresh** — bring devDeps to latest stable; drop unused runtime deps; clean Dependabot alerts. *(PR #4 added `@bitrix24/b24jssdk`; PR #5 reverted it in favour of an injectable `Logger` interface — see Phase 1 #5.)*
 - [x] **Positioning brief & onboarding Sprint A/B safe items** — runnable `examples/`, README integrator section, keywords broadening, Demo 2 dual subtitle. *(PR #5)*
 - [ ] **Characterization tests** for `base` / `producer` / `consumer` / `rpc` against a mocked `amqplib` channel.
   *Acceptance:* every exported class has at least one test asserting the current happy-path behaviour; tests pass on `main`; they form the baseline Phase 1 fixes must not regress.
@@ -82,14 +81,13 @@ Test-first, one defect per PR.
    *Acceptance:* a queue declared with both `maxPriority` and `deadLetter` passes both through to `channel.assertQueue` arguments; test asserts the merged shape.
 4. [ ] **Producer hygiene** — remove `channel.prefetch` from the publish channel (meaningless there); decide on publisher confirms so `publish()`'s boolean return is trustworthy.
    *Acceptance:* `producer.connect()` does not call `prefetch`; `publish()` JSDoc documents return-value semantics.
-5. [ ] **Logger migration** `console.*` → `@bitrix24/b24jssdk`.
-   *Acceptance:* `grep -r "console\." src/` returns nothing; URL credentials sanitized before any log; test verifies no password appears in captured log output.
+5. [ ] **Logger migration via DI** — replace stray `console.*` with calls to an injected `Logger` interface (`{ info, warn, error, debug }`); add a tiny default console adapter so the library still works out of the box.
+   *Why:* avoids forcing a Bitrix24-specific SDK dependency on non-Bitrix24 consumers; lets a Bitrix24 user pass in the `@bitrix24/b24jssdk` logger themselves; lets others wire `pino` / `consola` / silent.
+   *Acceptance:* `grep -r "console\." src/` returns nothing; `Logger` interface exported from `src/types.ts`; `RabbitMQConfig` accepts an optional `logger` field; URL credentials sanitized before any log; test verifies no password appears in captured log output and that a custom logger receives the calls.
 6. [ ] **Type tightening** — remove `any` from `types.ts` / `rpc.ts`; add JSDoc to every public method.
    *Acceptance:* `grep -rn ": any" src/` returns nothing in the public surface; typedoc / tsc-derived signature has docstrings for `Producer.publish`, `Consumer.registerHandler`, `Consumer.consume`, `RPC.call`.
 
 ## Track 2 — Onboarding & positioning
-
-Audience analysis and regional UX review live in [`docs/POSITIONING.md`](docs/POSITIONING.md). The plan items are here.
 
 ### Sprint A — perception & onboarding
 
@@ -103,10 +101,7 @@ Audience analysis and regional UX review live in [`docs/POSITIONING.md`](docs/PO
 
 - [x] **"For Bitrix24 integrators" README section** — PHP→Node bridge, broker hosting table, TLS reminder. *(PR #5)*
 - [x] **Demo 2 dual subtitle** "Balcony and Garden — Retry with Dead-Letter Queue (DLQ)" for SEO and clarity. *(PR #5)*
-- [ ] **`docs/ru` minimum** — README + Quickstart + Demo 1 via the translation skill. *Blocked by #3.*
-  *Acceptance:* `docs/ru/` mirrors `docs/en/` with the glossary preserved (`RabbitMQ`, `Bitrix24`, `producer`, `consumer`, `queue`, `exchange`).
-- [ ] **`docs/pt-BR` minimum** — same skill applied. *Tracked in #7, blocked by #3.*
-  *Acceptance:* same as `docs/ru`.
+- ❄️ **Localized docs (RU / PT-BR)** — **frozen**. English is the v0.1 contract; localization waits for a real user request from a real integrator. Issues #3 (RU skill) and #7 (PT-BR mirror) closed as `not planned` until then.
 
 ### Sprint C — discoverability & API reference
 
@@ -129,7 +124,6 @@ Each item carries the same WHAT / WHY / ACCEPTANCE shape; addressed when the dep
 - [ ] **README integrator section — `amqps://user:pass@host` URL form** advertises credentials in a string that current logging would leak.
   *Acceptance:* once Track 1 #5 lands, show a composed `{ hostname, username, password }` config form instead.
 - [x] **`package.json` `keywords` — `rpc` removed** until issue #6 resolves.
-- [ ] **`POSITIONING.md` §6 → here.** Already done; ensure POSITIONING.md does not re-grow its own plan.
 
 ## Track 3 — Process & infrastructure
 
@@ -150,9 +144,25 @@ Open as a working board in [issue #2](https://github.com/bitrix24/b24rabbitmq/is
 ## Track 4 — Capabilities (after v0.1)
 
 - [ ] **Publisher confirms** option for `RabbitMQProducer`.
-- [ ] **Graceful shutdown helpers**.
+- [ ] **Graceful shutdown helpers** (SIGTERM hook that drains in-flight handlers before closing the channel).
 - [ ] **PHP consumer/producer template** (README originally promised "PHP support soon").
 - [ ] **Expand demos** beyond the two current scenarios (delayed retry / priority queues / fan-out).
+
+## Track 5 — Skills for AI agents
+
+Skills are reusable, agent-readable recipes for repeatable workflows (translate docs, run all gates, regenerate examples, check for known antipatterns, etc.). They live in [`skills/`](skills/) at the repo root, in an agent-neutral Markdown format so any assistant (Claude Code, Cursor, Copilot, others) can pick them up. `.claude/skills/` may mirror entries for Claude-specific tooling — but the canonical source is `skills/`.
+
+- [x] **Bootstrap the directory** — `skills/README.md` describes the format, naming, when to add a skill. *(PR #5)*
+- [ ] **First real skill** — most likely `run-gates` (lint + typecheck + test + build before commit) or `next-pr-characterization-tests` (the agreed Phase 0 next step). Wait for a concrete trigger; do not pre-build skills no one is asking for.
+
+## Track 6 — Deployment recipes (for worker services using this library)
+
+The library itself does not deploy — `npm install` is the whole story. But integrators run **worker processes** on their own servers (VPS, Docker, Kubernetes, sometimes legacy Bitrix24 hosts). [`deployment/`](deployment/) holds copy-pasteable starting points.
+
+- [x] **Bootstrap the directory** — `deployment/README.md` explains the scope; `Dockerfile.worker` and `docker-compose.yml` provide a working baseline (worker + RabbitMQ). *(PR #5)*
+- [ ] **`systemd` unit example** — for VPS hosts without Docker (common in legacy Bitrix24 setups).
+- [ ] **Kubernetes manifest example** — `Deployment` + `ConfigMap` + `Secret` skeleton with healthcheck and graceful shutdown notes. *Depends on Track 4 graceful-shutdown helpers.*
+- [ ] **Operational notes** in `deployment/README.md` — SIGTERM handling, env-var-only credentials (never URL-form), reverse-proxy considerations, observability hooks.
 
 ---
 
@@ -160,15 +170,16 @@ Open as a working board in [issue #2](https://github.com/bitrix24/b24rabbitmq/is
 
 - **License**: MIT
 - **Module**: ESM only; no CommonJS unless a consumer needs it
-- **Dependencies**: keep runtime deps minimal (`@bitrix24/b24jssdk` for logging; `amqplib` is a peer). `b24jssdk` is a deliberate choice for Bitrix24-ecosystem consistency despite its transitive weight (axios/luxon); its logger is not wired into `src/` yet — that happens in Track 1 Phase 1 #5.
+- **Dependencies**: **no runtime dependencies** at v0.1 (`amqplib` is a peer). Logging is wired via DI — consumers plug in their own logger if they want one.
 - **Tests**: every behavioural change ships with a vitest test; broker-touching logic uses a mocked `amqplib` channel.
 - **Commits**: Conventional Commits, enforced by commitlint in CI.
-- **Secrets**: never committed.
-- **Docs**: English in `docs/en`, translated to `docs/ru` and `docs/pt-BR` by the AI-agent skill (see #3 / #7).
+- **Secrets**: never committed; never logged.
+- **Docs**: English only at v0.1. Localization is gated on a real user request.
 
 ## Related artefacts
 
-- [`docs/POSITIONING.md`](docs/POSITIONING.md) — audience analysis & regional UX review. Does **not** duplicate this plan.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — runtime model and lifecycle.
 - [`AGENTS.md`](AGENTS.md) — operational guide for AI assistants.
-- Issues: [#2](https://github.com/bitrix24/b24rabbitmq/issues/2) (Track 3 discussion board), [#3](https://github.com/bitrix24/b24rabbitmq/issues/3) (RU translation skill), [#6](https://github.com/bitrix24/b24rabbitmq/issues/6) (verify RPC), [#7](https://github.com/bitrix24/b24rabbitmq/issues/7) (PT-BR translation).
+- [`skills/`](skills/) — agent-readable workflow recipes (Track 5).
+- [`deployment/`](deployment/) — deployment recipes for worker services (Track 6).
+- Open issues: [#2](https://github.com/bitrix24/b24rabbitmq/issues/2) (Track 3 discussion board), [#6](https://github.com/bitrix24/b24rabbitmq/issues/6) (verify RPC).

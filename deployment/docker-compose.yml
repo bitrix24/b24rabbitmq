@@ -1,0 +1,47 @@
+# Baseline docker-compose for a worker that uses @bitrix24/b24rabbitmq.
+# Brings up RabbitMQ (with the management UI on http://localhost:15672)
+# and a single worker container built from Dockerfile.worker.
+#
+# Scale the worker horizontally with:  docker compose up --scale worker=3
+#
+# This file is intended for local development and staging — production
+# typically replaces the embedded RabbitMQ with a managed broker
+# (CloudAMQP, AWS MQ) and uses TLS (amqps://).
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  worker:
+    build:
+      context: ..               # adjust to your worker repo root
+      dockerfile: deployment/Dockerfile.worker
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+      RABBITMQ_VHOST: /
+    restart: unless-stopped
+    # Add stop_grace_period so SIGTERM can drain in-flight handlers.
+    # Bump this once your handlers' p99 latency is known.
+    stop_grace_period: 30s
+
+volumes:
+  rabbitmq-data:

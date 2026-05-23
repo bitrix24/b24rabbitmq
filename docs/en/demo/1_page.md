@@ -8,8 +8,8 @@
 
 ## Example Implementation in TypeScript:
 
-> The snippets below use `console.*` for brevity; in real code log through the
-> `@bitrix24/b24jssdk` logger (see project conventions).
+> The snippets below use `console.*` for brevity; in real code wire a `Logger`
+> via config (see `RabbitMQConfig.logger` once Phase 1 #5 lands).
 
 ```typescript
 // rabbitmq.config.ts

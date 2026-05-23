@@ -162,15 +162,12 @@ Clone the repo and look at [`examples/`](examples/) for end-to-end scripts you c
 ## Documentation
 
 * [Project brief & roadmap](PROJECT-BRIEF.md)
-* [Positioning & movement plan](docs/POSITIONING.md)
 * [Architecture](docs/ARCHITECTURE.md)
 * [Contributing](CONTRIBUTING.md)
 * [CHANGELOG](CHANGELOG.md)
 * [Terms](docs/en/1_page.md)
   * [Demo 1: Even Distribution](docs/en/demo/1_page.md)
   * [Demo 2: Balcony and Garden](docs/en/demo/2_page.md)
-
-> A Russian translation under `docs/ru` is produced by an AI-agent skill (see [#3](https://github.com/bitrix24/b24rabbitmq/issues/3)).
 
 ## Read
 
