@@ -8,13 +8,14 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.ts'],
-      // Floor only — prevents silent regression to ~0 if a test is removed.
-      // Raise as characterization tests land (see PROJECT-BRIEF Phase 0).
+      // Floor — slightly below current numbers to give a touch of headroom
+      // without letting coverage silently regress. Current: 87.4 / 86.88 /
+      // 90 / 58.69 (statements / lines / functions / branches).
       thresholds: {
-        statements: 20,
-        lines: 20,
-        functions: 8,
-        branches: 0
+        statements: 80,
+        lines: 80,
+        functions: 85,
+        branches: 50
       }
     }
   }

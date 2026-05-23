@@ -65,20 +65,20 @@ The work splits into four tracks. Each item carries: **what**, **why**, **accept
 - [x] **Process foundation** — PR CI (lint + typecheck + test + build), commitlint, vitest scaffold, renovate, issue/PR templates, this brief. *(PR #1)*
 - [x] **Dependency refresh** — bring devDeps to latest stable; drop unused runtime deps; clean Dependabot alerts. *(PR #4 added `@bitrix24/b24jssdk`; PR #5 reverted it in favour of an injectable `Logger` interface — see Phase 1 #5.)*
 - [x] **Positioning brief & onboarding Sprint A/B safe items** — runnable `examples/`, README integrator section, keywords broadening, Demo 2 dual subtitle. *(PR #5)*
-- [ ] **Characterization tests** for `base` / `producer` / `consumer` / `rpc` against a mocked `amqplib` channel.
-  *Acceptance:* every exported class has at least one test asserting the current happy-path behaviour; tests pass on `main`; they form the baseline Phase 1 fixes must not regress.
+- [x] **Characterization tests** for `base` / `producer` / `consumer` / `rpc` against a mocked `amqplib` channel. 32 tests across 5 files; coverage 26.77% → **87.4% statements / 90% functions**. Two defects (RPC reply queue never consumed; AMQP properties not surfaced to handlers) now have executable proof — see `tests/rpc.test.ts` and `tests/consumer.test.ts`.
 
 ### Phase 1: Correctness refactor
 
 Test-first, one defect per PR.
 
-1. [ ] **RPC: verify, then fix or delete** — *issue #6*. As of PR #5 `RabbitRPC` is no longer exported from `src/index.ts`; the file remains in the tree as the starting point.
-   *Why:* the "broken" claim was inferred from code reading, not proven by a test. Until proven and fixed, the class should not ship — currently enforced by the missing export.
-   *Acceptance:* a vitest under `tests/rpc.test.ts` exercises `RabbitRPC.call()` against a mocked `amqplib`. Two possible outcomes: **(a) defect confirmed** → fix + regression test + re-export from `src/index.ts`; **(b) not actually broken** → correct the docs and re-export with the test as baseline. A third explicit option: **(c) delete `src/rpc.ts`** if we decide RPC is out of scope for v0.1.
+1. [ ] **RPC: fix or delete** — *issue #6*. **Verification done** (PR for characterization tests): `tests/rpc.test.ts` proves the defect end-to-end. Concrete failure mode:
+   - `RabbitRPC.call()` asserts the reply queue via `consumer.registerQueue` but **never calls `consumer.consume()` on it**, so the channel has no active subscription for replies (`src/rpc.ts:19–28`).
+   - Even if it did, the consumer's delivery callback passes only `JSON.parse(msg.content)` to handlers — AMQP `properties.correlationId` is invisible — so the `msg.correlationId === correlationId` comparison at `src/rpc.ts:40` always fails.
+   *Next:* decide between **(a) fix** (call `consumer.consume()` on the reply queue, surface AMQP properties to handlers — either as a second arg or by passing the wrapped message); or **(b) delete `src/rpc.ts`** and drop RPC from v0.1 scope.
 2. [ ] **Consumer reconnect safety** — `throw` inside `setTimeout` crashes the process; `this.connect()` is not awaited.
    *Acceptance:* bounded async backoff loop; handlers re-established after reconnect; vitest simulates connection drop and asserts recovery.
-3. [ ] **`base.ts registerQueue` — `x-max-priority` merge under dead-letter.** The `deadLetter` branch overwrites `options.arguments`.
-   *Acceptance:* a queue declared with both `maxPriority` and `deadLetter` passes both through to `channel.assertQueue` arguments; test asserts the merged shape.
+3. [ ] **`base.ts registerQueue` — merge `x-max-priority` and dead-letter into one `arguments` object.** **Characterised** by `tests/base.test.ts` (the "LOSES dead-letter arguments…" test): when both `maxPriority` and `deadLetter` are set, the spread `{arguments: {dlx}, ...assertsOptions}` lets `assertsOptions.arguments` (carrying `x-max-priority`) overwrite the dead-letter arguments, so **dead-letter is dropped, not priority** — opposite of what the original `// @todo fix this` comment implies.
+   *Acceptance:* a queue declared with both `maxPriority` and `deadLetter` passes **both** `x-max-priority` and the `x-dead-letter-*` keys through to `channel.assertQueue.arguments`; the characterisation test flips from asserting the loss to asserting the merge.
 4. [ ] **Producer hygiene** — remove `channel.prefetch` from the publish channel (meaningless there); decide on publisher confirms so `publish()`'s boolean return is trustworthy.
    *Acceptance:* `producer.connect()` does not call `prefetch`; `publish()` JSDoc documents return-value semantics.
 5. [ ] **Logger migration via DI** — replace stray `console.*` with calls to an injected `Logger` interface (`{ info, warn, error, debug }`); add a tiny default console adapter so the library still works out of the box.
