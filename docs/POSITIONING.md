@@ -106,19 +106,21 @@ Sequenced, smallest-coherent-PR units. Tag indicates where the work belongs.
 
 ### Sprint A — perception & onboarding (this work cycle)
 
-- [ ] **`examples/` folder** with runnable `01-uniform-distribution` and
-  `02-retry-dlq` extracted from `docs/en/demo/*`. Link from the README above
-  the Documentation section. Highest ROI. *[this branch]*
-- [ ] **RPC honesty in README + exports** — add a one-line `⚠️ RabbitRPC is
-  currently non-functional` callout in the README, or remove `RabbitRPC` from
-  the public barrel (`src/index.ts`) until Phase 1 #1 lands. *[this branch]*
-- [ ] **Broaden `package.json` keywords** — `amqp`, `rabbitmq`, `messaging`,
-  `queue`, `producer`, `consumer`, `dead-letter`, `rpc`. *[this branch]*
-- [ ] **"Not only for Bitrix24" paragraph** in README — one sentence reframes
-  the package for the global audience without diluting the Bitrix24 framing.
-  *[this branch]*
-- [ ] **Single source of truth for "Known limitations"** — keep the master in
-  `PROJECT-BRIEF.md`; `AGENTS.md` and `ARCHITECTURE.md` link to it. *[this branch]*
+- [x] **`examples/` folder** — `01-uniform-distribution` (round-robin) and
+  `02-retry-dlq` (minimal DLX-driven dead-letter) added with their own
+  READMEs; linked from the top-level README above the Documentation section.
+- [ ] **RPC honesty in README + exports** — *blocked by #6.* The "RabbitRPC is
+  broken" claim is currently inferred from code reading, not from an executed
+  test. No user-facing framing until verification lands.
+- [x] **Broaden `package.json` keywords** — added `amqp`, `amqplib`,
+  `messaging`, `queue`, `producer`, `consumer`, `dead-letter`, `rpc`, `esm`;
+  normalized to lowercase.
+- [x] **"Not only for Bitrix24" line** in README — one sentence under the
+  tagline reframes the package for the global audience without diluting the
+  Bitrix24 framing.
+- [ ] **Single source of truth for "Known limitations"** — *blocked by #6.*
+  The duplication touches RPC claims in three files; defer until the actual
+  RPC behaviour is locked by a test.
 
 ### Sprint B — regional commitment
 

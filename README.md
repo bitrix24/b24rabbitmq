@@ -7,6 +7,8 @@
 
 Config-driven `Producer`, `Consumer` and `RPC` primitives over [`amqplib`](https://github.com/amqp-node/amqplib) for integrating Bitrix24 applications with RabbitMQ. Declare your exchanges, queues and bindings once; get priority and dead-letter handling out of the box.
 
+> Built primarily for Bitrix24 integrators, but works for any Node.js service that needs RabbitMQ with sensible defaults.
+
 > **Status:** actively being reanimated (2026), pre-v0.1. See [`PROJECT-BRIEF.md`](PROJECT-BRIEF.md) for the roadmap and known limitations. PHP templates are planned (see roadmap).
 
 ## Quickstart
@@ -126,6 +128,13 @@ tasks.forEach(async (task) => {
 ```
 
 More examples can be found in [documentation](#documentation) and in [@bitrix24/app-template-automation-rules](https://github.com/bitrix24/app-template-automation-rules/tree/main/consumers/activities)
+
+## Runnable examples
+
+Clone the repo and look at [`examples/`](examples/) for end-to-end scripts you can `pnpm exec tsx` against a local RabbitMQ:
+
+- [`examples/01-uniform-distribution`](examples/01-uniform-distribution/) — one queue, multiple consumers, round-robin.
+- [`examples/02-retry-dlq`](examples/02-retry-dlq/) — minimal native dead-letter-queue pattern (DLX-driven `nack`).
 
 ## Documentation
 

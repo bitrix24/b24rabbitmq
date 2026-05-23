@@ -4,9 +4,18 @@
   "author": "Bitrix",
   "description": "Library for integrating Bitrix24 applications with RabbitMQ",
   "keywords": [
-    "Bitrix24",
-    "RabbitMq",
-    "typescript"
+    "bitrix24",
+    "rabbitmq",
+    "amqp",
+    "amqplib",
+    "messaging",
+    "queue",
+    "producer",
+    "consumer",
+    "dead-letter",
+    "rpc",
+    "typescript",
+    "esm"
   ],
   "license": "MIT",
   "packageManager": "pnpm@10.10.0",
