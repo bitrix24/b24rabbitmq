@@ -96,53 +96,9 @@ recurred or that materially block adoption.
 - The "Balcony & Garden" metaphor doubles cognitive load for non-native
   readers and hides the page from search engines.
 
+
 ---
 
 ## 6. Movement plan
 
-Sequenced, smallest-coherent-PR units. Tag indicates where the work belongs.
-
-### Sprint A — perception & onboarding (this work cycle)
-
-- [x] **`examples/` folder** — `01-uniform-distribution` (round-robin) and
-  `02-retry-dlq` (minimal DLX-driven dead-letter) added with their own
-  READMEs; linked from the top-level README above the Documentation section.
-- [ ] **RPC honesty in README + exports** — *blocked by #6.* The "RabbitRPC is
-  broken" claim is currently inferred from code reading, not from an executed
-  test. No user-facing framing until verification lands.
-- [x] **Broaden `package.json` keywords** — added `amqp`, `amqplib`,
-  `messaging`, `queue`, `producer`, `consumer`, `dead-letter`, `rpc`, `esm`;
-  normalized to lowercase.
-- [x] **"Not only for Bitrix24" line** in README — one sentence under the
-  tagline reframes the package for the global audience without diluting the
-  Bitrix24 framing.
-- [ ] **Single source of truth for "Known limitations"** — *blocked by #6.*
-  The duplication touches RPC claims in three files; defer until the actual
-  RPC behaviour is locked by a test.
-
-### Sprint B — regional commitment
-
-- [ ] **`docs/ru` minimum** — README + Quickstart + Demo 1, via the #3 skill
-  once the reference example is provided. *[separate PR, blocked by #3]*
-- [ ] **`docs/pt-BR` minimum** — tracked in #7 (mirror of #3); file work
-  blocked until the translation skill exists.
-- [x] **"For Bitrix24 integrators" README section** — bridge PHP→Node mental
-  model + table of broker hosting options (Docker, CloudAMQP, AWS MQ in
-  `sa-east-1` / `eu-central-1`) + `amqps://` TLS reminder for LGPD/GDPR.
-- [x] **Demo 2 dual subtitle** — kept "Balcony & Garden", added "Retry with
-  Dead-Letter Queue (DLQ)" for SEO and non-native clarity.
-
-### Sprint C — discoverability & API reference
-
-- [ ] **TypeDoc API reference** under `docs/api/`, generated in CI. *[separate PR]*
-- [ ] **npm "downloads/week" + coverage badges** in README once thresholds
-  meaningfully exist. *[separate PR]*
-
-### Already planned in parallel (don't re-litigate here)
-
-- Characterization tests for `base` / `producer` / `consumer` / `rpc` against a
-  mocked `amqplib` channel — the next PR, prerequisite to Phase 1.
-- Phase 1 correctness refactor — one test-first PR per defect (see
-  [`PROJECT-BRIEF.md`](../PROJECT-BRIEF.md)).
-- AI-agent translation skill — issue #3, awaiting the reference example.
-- Backlog hardening (release gating, branch protection, etc.) — issue #2.
+**Moved to [`PROJECT-BRIEF.md`](../PROJECT-BRIEF.md) — the single source of truth.** This file keeps only the analysis (sections 1–5); the actionable plan lives in the brief under Tracks 1–4. Do not re-grow the plan here.

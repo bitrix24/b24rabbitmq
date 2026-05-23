@@ -64,13 +64,7 @@ Lifecycle to keep correct in code and docs: **construct → `initialize()` → (
 
 ### Known limitations
 
-These are **intentionally not yet fixed**. Confirm against [`PROJECT-BRIEF.md`](PROJECT-BRIEF.md) (Phase 1) and fix them **test-first, one per PR** — don't bundle them into unrelated work:
-
-1. **RPC doesn't work** — `RabbitRPC.call()` never calls `consumer.consume()` on its reply queue, and the correlation id is sent via AMQP `properties` but the consumer only surfaces the parsed JSON body to handlers.
-2. **Unsafe consumer reconnect** — `throw` inside a `setTimeout` callback crashes the process; `connect()` is retried without `await`.
-3. **`x-max-priority` lost** — `base.ts registerQueue` overwrites `arguments` when `deadLetter` is set instead of merging.
-4. **`console.*` logging** — should use the `@bitrix24/b24jssdk` logger.
-5. **`any` / missing JSDoc** on public methods and in `types.ts` / `rpc.ts`.
+The canonical list lives in [`PROJECT-BRIEF.md`](PROJECT-BRIEF.md) under **Track 1 — Phase 1**. Confirm against it before "fixing" something that looks wrong; fix items **test-first, one per PR**.
 
 ## Changing behavior
 

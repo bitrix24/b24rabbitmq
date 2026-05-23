@@ -40,7 +40,7 @@
 
 **Consumer**: `initialize()` → `connect()` → `setupExchanges()` → `setupQueues()`. Register a per-queue async handler with `registerHandler(queue, handler)`, then `consume(queue)`. The handler receives `(parsedContent, ack, nack)`; on a thrown error the message is `nack`ed without requeue (dead-letter territory).
 
-**RPC** *(currently broken — see Known limitations)*: `call()` is intended to create an exclusive reply queue, publish the request with `correlationId` + `replyTo`, and resolve the promise when the matching reply arrives (or reject on timeout, default 5000ms).
+**RPC** *(not currently exported — see [`PROJECT-BRIEF.md`](../PROJECT-BRIEF.md) Track 1 Phase 1 #1)*: `call()` is intended to create an exclusive reply queue, publish the request with `correlationId` + `replyTo`, and resolve the promise when the matching reply arrives (or reject on timeout, default 5000ms).
 
 ## Build & distribution
 
@@ -48,4 +48,4 @@
 
 ## Known limitations
 
-Several behaviours are currently broken or incomplete (RPC reply consumption, consumer reconnect safety, dead-letter + priority argument merging, stray `console.*` logging). These are tracked as the Phase 1 correctness refactor in [`PROJECT-BRIEF.md`](../PROJECT-BRIEF.md) and should be fixed test-first.
+Tracked in [`PROJECT-BRIEF.md`](../PROJECT-BRIEF.md) under **Track 1 — Phase 1**.

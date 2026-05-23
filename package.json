@@ -13,7 +13,6 @@
     "producer",
     "consumer",
     "dead-letter",
-    "rpc",
     "typescript",
     "esm"
   ],
