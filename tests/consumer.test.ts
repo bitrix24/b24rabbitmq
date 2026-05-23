@@ -95,16 +95,54 @@ describe('RabbitMQConsumer', () => {
     })
 
     /**
+     * Defect lock: the reconnect timer callback increments `retries` and
+     * fires a non-awaited `this.connect()`. We stub `connect` so the
+     * successful re-connection branch (which resets retries to 0) doesn't
+     * mask the increment; this also documents the fire-and-forget call.
+     */
+    it('increments retries and re-invokes connect() (not awaited) when the reconnect timer fires', async () => {
+      vi.useFakeTimers()
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+
+      // Replace connect with a no-op so the increment isn't immediately
+      // reset by the success branch inside the original connect().
+      const reconnectSpy = vi.spyOn(consumer, 'connect').mockResolvedValue(undefined)
+
+      // @ts-expect-error — access private field for characterisation.
+      expect(consumer.retries).toBe(0)
+
+      connection.emitClose()
+      await vi.advanceTimersByTimeAsync(1000)
+
+      // @ts-expect-error
+      expect(consumer.retries).toBe(1)
+      expect(reconnectSpy).toHaveBeenCalledTimes(1)
+    })
+
+    /**
      * Defect lock (PROJECT-BRIEF Phase 1 #2): handleReconnect throws
      * synchronously when retries are exhausted. Called from an event
      * listener context this is an uncatchable crash.
      */
-    it('throws synchronously when retries are exhausted (uncatchable from event listener)', async () => {
+    it('throws synchronously at the retries === maxRetries boundary (uncatchable from event listener)', async () => {
+      const maxRetries = config.connection.maxRetries
+      if (maxRetries === undefined) throw new Error('test config must set maxRetries')
+
       const consumer = new RabbitMQConsumer(config)
       await consumer.initialize()
-      // Drive retries up to the configured max (3) — bypassing the setTimeout.
+
+      // Just-below-boundary does NOT throw — schedules the next attempt.
       // @ts-expect-error — access private field for characterisation.
-      consumer.retries = 3
+      consumer.retries = maxRetries - 1
+      expect(() => {
+        // @ts-expect-error — access private method for characterisation.
+        consumer.handleReconnect()
+      }).not.toThrow()
+
+      // At-or-above boundary throws. Locks the current `>=` guard.
+      // @ts-expect-error — access private field for characterisation.
+      consumer.retries = maxRetries
       expect(() => {
         // @ts-expect-error — access private method for characterisation.
         consumer.handleReconnect()
@@ -146,7 +184,8 @@ describe('RabbitMQConsumer', () => {
       await consumer.initialize()
 
       let received: unknown
-      consumer.registerHandler('q1', async (body) => { received = body })
+      const handler = vi.fn(async (body: unknown) => { received = body })
+      consumer.registerHandler('q1', handler)
       await consumer.consume('q1')
       const callback = getConsumeCallback(channel, 'q1')
 
@@ -157,6 +196,9 @@ describe('RabbitMQConsumer', () => {
       }
       await callback(incoming)
 
+      // Final guard: a future bug that double-routes the delivery would
+      // be invisible without this — `received` would just hold the last value.
+      expect(handler).toHaveBeenCalledOnce()
       expect(received).toEqual({ payload: 42 })
       expect((received as Record<string, unknown>)['correlationId']).toBeUndefined()
       expect((received as Record<string, unknown>)['replyTo']).toBeUndefined()

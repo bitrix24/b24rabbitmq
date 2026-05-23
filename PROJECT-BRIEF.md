@@ -87,9 +87,11 @@ The merge fix (#3) ships first as a low-risk warm-up that proves the test-first
 flow on a real defect. **RPC (#1) comes second** — its outcome (fix vs. delete)
 shapes the public API surface and therefore Track 2 Sprint C scope (TypeDoc,
 re-export decision); leaving it for last would shadow every intermediate PR
-with an open question. The rest ascend in risk: producer hygiene (#4) → the
-process-killing reconnect (#2) → the architectural logger DI (#5) → typing
-polish (#6).
+with an open question. The remainder, in order: **#4** producer hygiene
+(mechanical, no public-API change) → **#2** reconnect safety (isolated to
+`consumer.ts` but fixes a process-killing crash path — touch is small, blast
+radius is large, hence not first) → **#5** logger DI (architectural, adds a
+new public API surface) → **#6** typing/JSDoc polish (no behavioural change).
 
 1. [ ] **RPC: fix or delete** — *issue #6*. **Verification done** (PR for characterization tests): `tests/rpc.test.ts` proves the defect end-to-end. Concrete failure mode:
    - `RabbitRPC.call()` asserts the reply queue via `consumer.registerQueue` but **never calls `consumer.consume()` on it**, so the channel has no active subscription for replies (`src/rpc.ts:19–28`).
