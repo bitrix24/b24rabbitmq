@@ -147,7 +147,7 @@ This library is for the **Node.js worker process that sits next to your Bitrix24
 | Option | Notes |
 |---|---|
 | Self-hosted Docker / Kubernetes | Fastest for prototypes; see the `docker run` line in [Quickstart](#quickstart). |
-| [CloudAMQP](https://www.cloudamqp.com/) | Managed RabbitMQ in multiple regions (incl. `sa-east-1` São Paulo and EU); generous free tier for development. |
+| [CloudAMQP](https://www.cloudamqp.com/) | Managed RabbitMQ in multiple regions (incl. São Paulo and EU); generous free tier for development. |
 | AWS MQ for RabbitMQ | Run inside your VPC; available in `sa-east-1`, `eu-central-1`, and others — useful when LGPD/GDPR data-residency rules apply. |
 
 For any non-local broker, use `amqps://user:pass@host/vhost` (TLS) and keep credentials in environment variables, **not** in `rabbitmq.config.ts`.
@@ -162,6 +162,7 @@ Clone the repo and look at [`examples/`](examples/) for end-to-end scripts you c
 ## Documentation
 
 * [Project brief & roadmap](PROJECT-BRIEF.md)
+* [Positioning & movement plan](docs/POSITIONING.md)
 * [Architecture](docs/ARCHITECTURE.md)
 * [Contributing](CONTRIBUTING.md)
 * [CHANGELOG](CHANGELOG.md)

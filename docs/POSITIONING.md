@@ -40,11 +40,11 @@ architecturally bound to Bitrix24; the brand framing currently obscures that.
   the top-level `README.md`, `PROJECT-BRIEF.md`, `docs/ARCHITECTURE.md`,
   `CONTRIBUTING.md`, `AGENTS.md`, `.github/contributing/testing.md`.
 - **What is missing:** no deployed docs site, no generated API reference (no
-  TypeDoc), no runnable `examples/` folder, no `docs/ru` or `docs/pt-BR`
-  (`docs/ru` is promised by issue #3 but the directory does not exist yet).
-- **Strengths:** runnable Quickstart in the README; concise `ARCHITECTURE.md`;
-  `PROJECT-BRIEF.md` as a single source of truth for roadmap + known defects;
-  Demo 1 is complete and works as written.
+  TypeDoc), no `docs/ru` or `docs/pt-BR` (`docs/ru` is promised by issue #3
+  but the directory does not exist yet; `docs/pt-BR` is tracked in #7).
+- **Strengths:** runnable Quickstart in the README; runnable `examples/`
+  folder; concise `ARCHITECTURE.md`; `PROJECT-BRIEF.md` as a single source of
+  truth for roadmap + known defects; Demo 1 is complete and works as written.
 - **Frictions:** "Known limitations" is restated in three files with small
   drifts; `docs/en/1_page.md` is titled `Terms:` (trailing colon); Demo 2 leans
   on a "Balcony & Garden" rabbit metaphor that taxes non-native readers and
@@ -83,10 +83,8 @@ recurred or that materially block adoption.
 ### EN / global OSS
 - Brand framing (`@bitrix24/...`, "for Bitrix24 applications") makes the
   package look like internal tooling; one sentence in the README would fix it.
-- No `examples/` folder; competitors like `rascal` and `rabbitmq-client` ship
-  cloneable runnable scripts.
-- `package.json` `keywords` are thin (`Bitrix24, RabbitMq, typescript`) —
-  missing `amqp`, `rabbitmq`, `messaging`, `queue`, `dead-letter`, `rpc`.
+- `package.json` `keywords` were thin (`Bitrix24, RabbitMq, typescript`) —
+  needed `amqp`, `rabbitmq`, `messaging`, `queue`, `dead-letter`, `rpc`.
 - A broken `RabbitRPC` export ships on npm — same blocker as above, with a
   different framing.
 
