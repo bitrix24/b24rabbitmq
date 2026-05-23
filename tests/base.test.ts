@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { RabbitMQBase } from '../src/base'
 import type { RabbitMQConfig } from '../src/types'
 import { makeFakeConnection, type FakeChannel, type FakeConnection } from './_helpers/amqp-mock'
@@ -39,6 +39,10 @@ describe('RabbitMQBase', () => {
     const fakes = makeFakeConnection()
     channel = fakes.channel
     connection = fakes.connection
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   describe('connect()', () => {
@@ -114,6 +118,28 @@ describe('RabbitMQBase', () => {
       // …and the dead-letter keys are absent:
       expect(args['x-dead-letter-exchange']).toBeUndefined()
       expect(args['x-dead-letter-routing-key']).toBeUndefined()
+    })
+
+    /**
+     * Caller-supplied `queue.options` is spread LAST in `registerQueue`, so an
+     * `options.arguments` object will completely replace the priority / dead-
+     * letter arguments injected by the library. Locked here so the Phase 1
+     * merge fix consciously decides whether to keep this behaviour or merge.
+     */
+    it('lets `queue.options.arguments` overwrite library-injected `arguments` (current spread order)', async () => {
+      base = new TestBase(baseConfig(), channel, connection)
+      await base.registerQueue({
+        name: 'q',
+        maxPriority: 7,
+        options: { arguments: { 'x-custom': 'caller-wins' } },
+        bindings: []
+      })
+
+      const opts = channel.assertQueue.mock.calls[0]?.[1] as Record<string, unknown>
+      const args = opts['arguments'] as Record<string, unknown>
+      expect(args['x-custom']).toBe('caller-wins')
+      // Library-injected x-max-priority is gone because options spread overrides it.
+      expect(args['x-max-priority']).toBeUndefined()
     })
 
     it('binds the queue with a routing key when no headers are given', async () => {

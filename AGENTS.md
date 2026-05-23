@@ -71,7 +71,7 @@ The canonical list lives in [`PROJECT-BRIEF.md`](PROJECT-BRIEF.md) under **Track
 ## Changing behavior
 
 - **Test-first.** Behavioural change ships with a vitest test; when fixing a known bug, add a regression test that fails first. See [`.github/contributing/testing.md`](.github/contributing/testing.md).
-- **Mock the broker.** Unit tests must not require a live RabbitMQ — mock the `amqplib` channel/connection. Don't add integration tests that hit a real broker to the default `pnpm test` run.
+- **Mock the broker.** Unit tests must not require a live RabbitMQ — use the shared factory at [`tests/_helpers/amqp-mock.ts`](.github/contributing/testing.md#mocking-amqplib) (`makeFakeChannel`, `makeFakeConnection`, `getConsumeCallback`) instead of inlining your own spies. Don't add integration tests that hit a real broker to the default `pnpm test` run.
 - **Time-dependent code** (uuidv7, reconnect backoff): use `vi.useFakeTimers()` / `vi.setSystemTime()` for determinism — never rely on real `setTimeout` or wall-clock ordering in assertions.
 - **If you change `connect()`/`initialize()`/`publish()`/`consume()` semantics, update the examples** in `README.md` and `docs/en/demo/*` so they stay runnable.
 

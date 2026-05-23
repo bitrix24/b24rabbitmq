@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import amqp from 'amqplib'
 import { RabbitMQConsumer } from '../src/consumer'
 import type { RabbitMQConfig } from '../src/types'
-import { makeFakeConnection, type FakeChannel, type FakeConnection } from './_helpers/amqp-mock'
+import { makeFakeConnection, getConsumeCallback, type FakeChannel, type FakeConnection } from './_helpers/amqp-mock'
 
 vi.mock('amqplib', () => ({
   default: { connect: vi.fn() }
@@ -33,6 +33,7 @@ describe('RabbitMQConsumer', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   describe('initialize()', () => {
@@ -68,6 +69,47 @@ describe('RabbitMQConsumer', () => {
       connection.emitClose()
       expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 1000)
     })
+
+    /** Network-class errors (ENOTFOUND, ECONNREFUSED) are rethrown — no retry. */
+    it('rethrows ENOTFOUND without scheduling a reconnect', async () => {
+      vi.useFakeTimers()
+      vi.mocked(amqp.connect).mockReset()
+      vi.mocked(amqp.connect).mockRejectedValue(new Error('ENOTFOUND amqp://nowhere'))
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+
+      const consumer = new RabbitMQConsumer(config)
+      await expect(consumer.connect()).rejects.toThrow('ENOTFOUND')
+      expect(setTimeoutSpy).not.toHaveBeenCalled()
+    })
+
+    /** Generic (non-network) errors go through handleReconnect. */
+    it('schedules a reconnect when amqp.connect fails with a generic (non-network) error', async () => {
+      vi.useFakeTimers()
+      vi.mocked(amqp.connect).mockReset()
+      vi.mocked(amqp.connect).mockRejectedValue(new Error('something else'))
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.connect()
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 1000)
+    })
+
+    /**
+     * Defect lock (PROJECT-BRIEF Phase 1 #2): handleReconnect throws
+     * synchronously when retries are exhausted. Called from an event
+     * listener context this is an uncatchable crash.
+     */
+    it('throws synchronously when retries are exhausted (uncatchable from event listener)', async () => {
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+      // Drive retries up to the configured max (3) — bypassing the setTimeout.
+      // @ts-expect-error — access private field for characterisation.
+      consumer.retries = 3
+      expect(() => {
+        // @ts-expect-error — access private method for characterisation.
+        consumer.handleReconnect()
+      }).toThrow('Max connection retries exceeded')
+    })
   })
 
   describe('handlers', () => {
@@ -76,9 +118,8 @@ describe('RabbitMQConsumer', () => {
       await consumer.initialize()
       const handler = vi.fn().mockResolvedValue(undefined)
       consumer.registerHandler('q1', handler)
-      // Trigger a consume callback to confirm the handler runs.
       await consumer.consume('q1')
-      const callback = channel.consume.mock.calls[0]?.[1] as (msg: unknown) => Promise<void>
+      const callback = getConsumeCallback(channel, 'q1')
       const msg = { content: Buffer.from(JSON.stringify({ a: 1 })) }
       await callback(msg)
       expect(handler).toHaveBeenCalledTimes(1)
@@ -104,17 +145,10 @@ describe('RabbitMQConsumer', () => {
       const consumer = new RabbitMQConsumer(config)
       await consumer.initialize()
 
-      const handler = vi.fn(async (received) => {
-        // The handler receives EXACTLY the parsed content object.
-        expect(received).toEqual({ payload: 42 })
-        // Properties are NOT attached to the value passed to the handler.
-        expect((received as Record<string, unknown>)['correlationId']).toBeUndefined()
-        expect((received as Record<string, unknown>)['replyTo']).toBeUndefined()
-        expect((received as Record<string, unknown>)['headers']).toBeUndefined()
-      })
-      consumer.registerHandler('q1', handler)
+      let received: unknown
+      consumer.registerHandler('q1', async (body) => { received = body })
       await consumer.consume('q1')
-      const callback = channel.consume.mock.calls[0]?.[1] as (msg: unknown) => Promise<void>
+      const callback = getConsumeCallback(channel, 'q1')
 
       const incoming = {
         content: Buffer.from(JSON.stringify({ payload: 42 })),
@@ -123,26 +157,30 @@ describe('RabbitMQConsumer', () => {
       }
       await callback(incoming)
 
-      expect(handler).toHaveBeenCalledOnce()
+      expect(received).toEqual({ payload: 42 })
+      expect((received as Record<string, unknown>)['correlationId']).toBeUndefined()
+      expect((received as Record<string, unknown>)['replyTo']).toBeUndefined()
+      expect((received as Record<string, unknown>)['headers']).toBeUndefined()
     })
 
     it('acks on handler success and nacks (false, false) on handler failure', async () => {
       const consumer = new RabbitMQConsumer(config)
       await consumer.initialize()
 
-      const okHandler = vi.fn(async (_msg, ack) => { ack() })
+      // _content is the parsed JSON body (NOT the raw amqp message); ack is the 2nd arg.
+      const okHandler = vi.fn(async (_content, ack) => { ack() })
       const failHandler = vi.fn(async () => { throw new Error('boom') })
 
       consumer.registerHandler('q1', okHandler)
       await consumer.consume('q1')
-      const cb1 = channel.consume.mock.calls[0]?.[1] as (msg: unknown) => Promise<void>
+      const callback = getConsumeCallback(channel, 'q1')
       const okMsg = { content: Buffer.from(JSON.stringify({})) }
-      await cb1(okMsg)
+      await callback(okMsg)
       expect(channel.ack).toHaveBeenCalledWith(okMsg)
 
       // Re-bind a failing handler on the same queue and trigger again.
       consumer.registerHandler('q1', failHandler)
-      await cb1(okMsg)
+      await callback(okMsg)
       expect(channel.nack).toHaveBeenCalledWith(okMsg, false, false)
     })
 
@@ -151,8 +189,8 @@ describe('RabbitMQConsumer', () => {
       await consumer.initialize()
       consumer.registerHandler('q1', vi.fn())
       await consumer.consume('q1')
-      const cb = channel.consume.mock.calls[0]?.[1] as (msg: unknown) => Promise<void>
-      await expect(cb(null)).resolves.toBeUndefined()
+      const callback = getConsumeCallback(channel, 'q1')
+      await expect(callback(null)).resolves.toBeUndefined()
       expect(channel.ack).not.toHaveBeenCalled()
       expect(channel.nack).not.toHaveBeenCalled()
     })
