@@ -1,4 +1,4 @@
-# Example 2: Balcony and Garden
+# Example 2: Balcony and Garden — Retry with Dead-Letter Queue (DLQ)
 
 > **Note:** this is an illustrative retry/dead-letter pattern. Re-publishing from a
 > consumer is done through a `RabbitMQProducer` (a consumer cannot publish). The

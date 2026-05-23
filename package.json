@@ -4,9 +4,17 @@
   "author": "Bitrix",
   "description": "Library for integrating Bitrix24 applications with RabbitMQ",
   "keywords": [
-    "Bitrix24",
-    "RabbitMq",
-    "typescript"
+    "bitrix24",
+    "rabbitmq",
+    "amqp",
+    "amqplib",
+    "messaging",
+    "queue",
+    "producer",
+    "consumer",
+    "dead-letter",
+    "typescript",
+    "esm"
   ],
   "license": "MIT",
   "packageManager": "pnpm@10.10.0",
@@ -27,9 +35,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
-  "dependencies": {
-    "@bitrix24/b24jssdk": "^1.1.2"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",
