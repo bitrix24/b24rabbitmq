@@ -8,6 +8,9 @@
 
 ## Example Implementation in TypeScript:
 
+> The snippets below use `console.*` for brevity; in real code log through the
+> `@bitrix24/b24jssdk` logger (see project conventions).
+
 ```typescript
 // rabbitmq.config.ts
 import type { RabbitMQConfig } from '@bitrix24/b24rabbitmq';

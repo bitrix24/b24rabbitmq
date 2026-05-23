@@ -137,7 +137,7 @@ More examples can be found in [documentation](#documentation) and in [@bitrix24/
   * [Demo 1: Even Distribution](docs/en/demo/1_page.md)
   * [Demo 2: Balcony and Garden](docs/en/demo/2_page.md)
 
-> Documentation is also translated to Russian — run `pnpm translate-docs` to generate `docs/ru` locally.
+> A Russian translation under `docs/ru` is produced by an AI-agent skill (see [#3](https://github.com/bitrix24/b24rabbitmq/issues/3)).
 
 ## Read
 

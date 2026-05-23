@@ -1,7 +1,6 @@
 {
   "include": [
     "src/**/*.ts",
-    "tools/**/*.ts",
     "tests/**/*.ts",
     "*.config.ts"
   ],
@@ -19,19 +18,14 @@
     "moduleDetection": "force",
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "useDefineForClassFields": true,
     "noImplicitThis": true,
     "declaration": true,
     "esModuleInterop": true,
     "lib": [
-      "ESNext",
-      "dom",
-      "dom.iterable",
-      "webworker"
+      "ESNext"
     ],
-    "jsx": "preserve",
-    "jsxImportSource": "vue",
     "types": [
       "node"
     ],

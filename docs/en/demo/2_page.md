@@ -2,7 +2,9 @@
 
 > **Note:** this is an illustrative retry/dead-letter pattern. Re-publishing from a
 > consumer is done through a `RabbitMQProducer` (a consumer cannot publish). The
-> snippets below reflect the intended API.
+> snippets below reflect the intended API. Reading `msg.headers` (e.g.
+> `x-retry-count`) depends on a Phase 1 fix that surfaces AMQP message properties to
+> handlers; until then, carry the retry counter inside the message body.
 
 > Let the rabbits (messages) jump into the hole (`exchange`).
 > The rabbit reaches the room (`queue`) and tries to exit through the door (`consumer`).
@@ -287,12 +289,15 @@ export async function sendEvent(message: any) {
 
 ### Starting consumers:
 
-```bash
-# Start 3 main queue handlers
-npm run start:consumer -- --queue=demo2.events.subscriptions-service.v1 --instances=3
+Each file calls `consumer.consume(...)` itself, so just run them (start the main
+consumer in several terminals for multiple instances):
 
-# Start problematic messages handler
-npm run start:consumer -- --queue=demo2.subscriptions-service.failed.v1
+```bash
+# Start the main queue handler (run in 3 terminals for 3 instances)
+npx tsx consumers/main-consumer.ts
+
+# Start the problematic messages handler
+npx tsx consumers/failed-consumer.ts
 ```
 
 ### Operation mechanism:

@@ -8,7 +8,14 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.ts'],
-      exclude: ['tools/**', 'tests/**', '**/*.config.ts']
+      // Floor only — prevents silent regression to ~0 if a test is removed.
+      // Raise as characterization tests land (see PROJECT-BRIEF Phase 0).
+      thresholds: {
+        statements: 20,
+        lines: 20,
+        functions: 8,
+        branches: 0
+      }
     }
   }
 })

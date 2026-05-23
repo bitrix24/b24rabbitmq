@@ -25,26 +25,22 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "translate-docs": "tsx tools/translate.docs.ts"
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "consola": "^3.4.2"
+    "@bitrix24/b24jssdk": "^1.1.2"
   },
   "devDependencies": {
-    "@commitlint/cli": "^19.8.1",
-    "@commitlint/config-conventional": "^19.8.1",
-    "@vitest/coverage-v8": "^3.2.4",
-    "esbuild": "^0.25.5",
-    "typescript": "^5.8.3",
-    "unbuild": "^3.5.0",
-    "eslint-config-unjs": "^0.4.2",
-    "@types/amqplib": "^0.10.7",
-    "tsx": "^4.19.4",
-    "@types/node": "^22.15.23",
-    "openai": "^4.103.0",
-    "dotenv": "^16.5.0",
-    "vitest": "^3.2.4"
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
+    "@types/amqplib": "^0.10.8",
+    "@types/node": "^20.19.9",
+    "@vitest/coverage-v8": "^4.1.7",
+    "eslint": "^9.39.4",
+    "eslint-config-unjs": "^0.6.2",
+    "typescript": "^5.9.2",
+    "unbuild": "^3.6.1",
+    "vitest": "^4.1.7"
   },
   "peerDependencies": {
     "amqplib": "^0.10.8"
