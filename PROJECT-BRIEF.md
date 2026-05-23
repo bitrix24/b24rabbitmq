@@ -16,6 +16,17 @@ The release is "trustworthy" when **all** are true:
 - **Docs**: README has a runnable Quickstart and a positioning paragraph for Bitrix24 integrators; `examples/` has at least two runnable end-to-end scenarios; `docs/en/` complete. English only at v0.1 — localization waits for a real user request.
 - **Process**: release is tag-gated (not free `workflow_dispatch`); npm provenance shipped; CI matrix on Node 20 + 22; branch protection on `main`; commitlint on every PR.
 
+## Critical path to v0.1
+
+Sequenced view of what must land — and in roughly what order — for the acceptance criteria above to be met. Side tracks (skills, deployment recipes, additional capabilities) are deliberately **not** on this path.
+
+1. **Track 1 Phase 1 correctness PRs** (six items, see "The plan" below). Approximate order: `#3 → #1 → #4 → #2 → #5 → #6`. Each PR ships with a regression test that flips a Phase 0 characterisation lock.
+2. **Track 2 Sprint C** — TypeDoc API reference, README badges. Depends on the public-API shape stabilising, so it follows the RPC decision (Phase 1 #1).
+3. **Track 3 release flow** — adopt changesets/release-please, tag-triggered publish, branch protection. The last gate before tagging.
+4. **Cut `v0.1`** on a green release pipeline.
+
+Solo-maintainer + AI-assistant pace: roughly 6–8 sequential PRs from current `main` to the tag.
+
 ## Project coordinates
 
 - **Repository**: https://github.com/bitrix24/b24rabbitmq
@@ -70,6 +81,15 @@ The work splits into four tracks. Each item carries: **what**, **why**, **accept
 ### Phase 1: Correctness refactor
 
 Test-first, one defect per PR.
+
+**Recommended PR sequence (≠ list order below):** `#3 → #1 → #4 → #2 → #5 → #6`.
+The merge fix (#3) ships first as a low-risk warm-up that proves the test-first
+flow on a real defect. **RPC (#1) comes second** — its outcome (fix vs. delete)
+shapes the public API surface and therefore Track 2 Sprint C scope (TypeDoc,
+re-export decision); leaving it for last would shadow every intermediate PR
+with an open question. The rest ascend in risk: producer hygiene (#4) → the
+process-killing reconnect (#2) → the architectural logger DI (#5) → typing
+polish (#6).
 
 1. [ ] **RPC: fix or delete** — *issue #6*. **Verification done** (PR for characterization tests): `tests/rpc.test.ts` proves the defect end-to-end. Concrete failure mode:
    - `RabbitRPC.call()` asserts the reply queue via `consumer.registerQueue` but **never calls `consumer.consume()` on it**, so the channel has no active subscription for replies (`src/rpc.ts:19–28`).
@@ -148,21 +168,25 @@ Open as a working board in [issue #2](https://github.com/bitrix24/b24rabbitmq/is
 - [ ] **PHP consumer/producer template** (README originally promised "PHP support soon").
 - [ ] **Expand demos** beyond the two current scenarios (delayed retry / priority queues / fan-out).
 
-## Track 5 — Skills for AI agents
+## Track 5 — Skills for AI agents *(dormant — placeholder)*
+
+**Status:** placeholder. The directory exists with a README + format, but no actual skills are committed and none are planned until a concrete trigger arrives. Listed here so the convention is discoverable, **not** as an active work-stream.
 
 Skills are reusable, agent-readable recipes for repeatable workflows (translate docs, run all gates, regenerate examples, check for known antipatterns, etc.). They live in [`skills/`](skills/) at the repo root, in an agent-neutral Markdown format so any assistant (Claude Code, Cursor, Copilot, others) can pick them up. `.claude/skills/` may mirror entries for Claude-specific tooling — but the canonical source is `skills/`.
 
 - [x] **Bootstrap the directory** — `skills/README.md` describes the format, naming, when to add a skill. *(PR #5)*
-- [ ] **First real skill** — most likely `run-gates` (lint + typecheck + test + build before commit) or `next-pr-characterization-tests` (the agreed Phase 0 next step). Wait for a concrete trigger; do not pre-build skills no one is asking for.
+- [ ] **First real skill** — wait for a concrete trigger; do not pre-build skills no one is asking for.
 
-## Track 6 — Deployment recipes (for worker services using this library)
+## Track 6 — Deployment recipes *(post-v0.1; depends on Track 4)*
+
+**Status:** the bootstrap baseline shipped in PR #5, but every meaningful follow-up item depends on **Track 4 graceful-shutdown helpers** and therefore lands after v0.1. Not on the v0.1 critical path.
 
 The library itself does not deploy — `npm install` is the whole story. But integrators run **worker processes** on their own servers (VPS, Docker, Kubernetes, sometimes legacy Bitrix24 hosts). [`deployment/`](deployment/) holds copy-pasteable starting points.
 
 - [x] **Bootstrap the directory** — `deployment/README.md` explains the scope; `Dockerfile.worker` and `docker-compose.yml` provide a working baseline (worker + RabbitMQ). *(PR #5)*
-- [ ] **`systemd` unit example** — for VPS hosts without Docker (common in legacy Bitrix24 setups).
-- [ ] **Kubernetes manifest example** — `Deployment` + `ConfigMap` + `Secret` skeleton with healthcheck and graceful shutdown notes. *Depends on Track 4 graceful-shutdown helpers.*
-- [ ] **Operational notes** in `deployment/README.md` — SIGTERM handling, env-var-only credentials (never URL-form), reverse-proxy considerations, observability hooks.
+- [ ] **`systemd` unit example** — for VPS hosts without Docker (common in legacy Bitrix24 setups). *Post-v0.1.*
+- [ ] **Kubernetes manifest example** — `Deployment` + `ConfigMap` + `Secret` skeleton with healthcheck and graceful-shutdown notes. *Blocked by Track 4 graceful-shutdown helpers.*
+- [ ] **Operational notes** in `deployment/README.md` — SIGTERM handling, env-var-only credentials (never URL-form), reverse-proxy considerations, observability hooks. *Post-v0.1.*
 
 ---
 
