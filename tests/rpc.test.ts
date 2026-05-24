@@ -110,23 +110,9 @@ describe('RabbitRPC.call() — verification of issue #6', () => {
     expect(replyConsume, 'reply queue is never consumed — this is the defect').toBeUndefined()
   })
 
-  /**
-   * Defect #2 (related; characterised in consumer.test.ts):
-   *   Even if consume() were called, the consumer's callback hands the
-   *   handler only the parsed JSON body, so `msg.correlationId` is
-   *   always undefined and the equality check inside RabbitRPC.call()
-   *   would never succeed. Confirmed here by the end-to-end observation
-   *   that the call rejects on timeout.
-   */
-  it('rejects with a timeout because no reply path exists', async () => {
-    const producer = new RabbitMQProducer(config)
-    const consumer = new RabbitMQConsumer(config)
-    await producer.initialize()
-    await consumer.initialize()
-
-    const rpc = new RabbitRPC(producer, consumer)
-    await expect(
-      rpc.call('rpc.ex', 'rk', { hello: 1 }, 30)
-    ).rejects.toThrow('[RabbitRPC] timeout')
-  })
+  // Defect #2 (the AMQP-properties surfacing gap that would make the
+  // correlationId comparison fail even if the reply queue WERE consumed)
+  // is characterised in tests/consumer.test.ts under "passes ONLY the
+  // parsed JSON body to the handler". End-to-end timeout behaviour is
+  // already asserted by the two tests above; no separate test needed.
 })

@@ -115,7 +115,7 @@ describe('RabbitMQConsumer', () => {
       connection.emitClose()
       await vi.advanceTimersByTimeAsync(1000)
 
-      // @ts-expect-error
+      // @ts-expect-error — access private field for characterisation.
       expect(consumer.retries).toBe(1)
       expect(reconnectSpy).toHaveBeenCalledTimes(1)
     })
@@ -238,6 +238,40 @@ describe('RabbitMQConsumer', () => {
       await expect(callback(null)).resolves.toBeUndefined()
       expect(channel.ack).not.toHaveBeenCalled()
       expect(channel.nack).not.toHaveBeenCalled()
+    })
+
+    /** Covers the explicit-nack closure at src/consumer.ts:85 (third handler arg). */
+    it('nacks(false, false) when the handler explicitly calls the nack argument', async () => {
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+      consumer.registerHandler('q1', async (_content, _ack, nack) => { nack() })
+      await consumer.consume('q1')
+      const callback = getConsumeCallback(channel, 'q1')
+      const msg = { content: Buffer.from(JSON.stringify({ x: 1 })) }
+      await callback(msg)
+      expect(channel.nack).toHaveBeenCalledWith(msg, false, false)
+      expect(channel.ack).not.toHaveBeenCalled()
+    })
+
+    /**
+     * Defect lock (Phase 1 #7 — newly surfaced): if a handler calls ack()
+     * and then throws, both `channel.ack` AND `channel.nack` fire on the
+     * same message — a protocol error that amqplib refuses in production.
+     * Locking the current shape so the Phase 1 fix has a baseline.
+     */
+    it('CURRENTLY calls both ack and nack when the handler ack()s and then throws (defect lock)', async () => {
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+      consumer.registerHandler('q1', async (_content, ack) => {
+        ack()
+        throw new Error('after-ack')
+      })
+      await consumer.consume('q1')
+      const callback = getConsumeCallback(channel, 'q1')
+      const msg = { content: Buffer.from(JSON.stringify({})) }
+      await callback(msg)
+      expect(channel.ack).toHaveBeenCalledWith(msg)
+      expect(channel.nack).toHaveBeenCalledWith(msg, false, false)
     })
   })
 })

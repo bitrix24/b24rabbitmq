@@ -82,4 +82,4 @@ For ordering assertions on UUIDv7, compare the full 48-bit time prefix (first 12
 
 When fixing a [known defect](../../PROJECT-BRIEF.md), first add a test that captures the **current** behaviour, watch it pass, then change the code and update the test to assert the **fixed** behaviour in the same PR. This makes the behavioural change explicit in review.
 
-The Phase 0 characterisation suite (`tests/base.test.ts`, `tests/producer.test.ts`, `tests/consumer.test.ts`, `tests/rpc.test.ts`) is the baseline — most Phase 1 fixes flip one of those tests from "asserts the defect" to "asserts the fix".
+The Phase 0 characterisation suite (`tests/base.test.ts`, `tests/producer.test.ts`, `tests/consumer.test.ts`, `tests/rpc.test.ts`) is the baseline — most Phase 1 fixes flip one or more of those tests from "asserts the defect" to "asserts the fix" (Phase 1 #3 in particular flips two).

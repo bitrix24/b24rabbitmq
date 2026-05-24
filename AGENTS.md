@@ -51,7 +51,7 @@ Before opening a PR, all four gates must pass locally: `pnpm lint`, `pnpm typech
 - **ESM only.** No CommonJS. Use `import`/`export`, top-level `await` is fine in docs examples.
 - **Keep the dependency surface minimal.** Don't add runtime deps; `amqplib` stays a peer dependency.
 - **Logging is dependency-injected** via a `Logger` interface (planned in Phase 1 #5); a tiny console adapter is the default. Existing `console.*` calls in `src/` are a known defect being migrated.
-- **Public API = whatever `src/index.ts` re-exports.** Don't widen it casually; `src/tools/uuidv7.ts` is intentionally internal, and `RabbitRPC` is intentionally *not* exported until #6 resolves.
+- **Public API = whatever `src/index.ts` re-exports.** Don't widen it casually; `src/tools/uuidv7.ts` is intentionally internal, and `RabbitRPC` is intentionally *not* exported until Phase 1 #1 (issue #6) resolves.
 - **Docs are English only** at v0.1; localization is frozen until a real integrator asks.
 
 ## Library source

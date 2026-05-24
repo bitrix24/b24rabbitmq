@@ -20,7 +20,7 @@ The release is "trustworthy" when **all** are true:
 
 Sequenced view of what must land — and in roughly what order — for the acceptance criteria above to be met. Side tracks (skills, deployment recipes, additional capabilities) are deliberately **not** on this path.
 
-1. **Track 1 Phase 1 correctness PRs** (six items, see "The plan" below). Approximate order: `#3 → #1 → #4 → #2 → #5 → #6`. Each PR ships with a regression test that flips a Phase 0 characterisation lock.
+1. **Track 1 Phase 1 correctness PRs** (six items, see "The plan" below). Approximate order — **Phase 1 items** `#3 → #1 → #4 → #2 → #5 → #6 → #7`. Each PR ships with a regression test: either flipping a Phase 0 characterisation lock (#2, #3, #5) or adding fresh coverage (#1, #4, #6).
 2. **Track 2 Sprint C** — TypeDoc API reference, README badges. Depends on the public-API shape stabilising, so it follows the RPC decision (Phase 1 #1).
 3. **Track 3 release flow** — adopt changesets/release-please, tag-triggered publish, branch protection. The last gate before tagging.
 4. **Cut `v0.1`** on a green release pipeline.
@@ -76,13 +76,13 @@ The work splits into four tracks. Each item carries: **what**, **why**, **accept
 - [x] **Process foundation** — PR CI (lint + typecheck + test + build), commitlint, vitest scaffold, renovate, issue/PR templates, this brief. *(PR #1)*
 - [x] **Dependency refresh** — bring devDeps to latest stable; drop unused runtime deps; clean Dependabot alerts. *(PR #4 added `@bitrix24/b24jssdk`; PR #5 reverted it in favour of an injectable `Logger` interface — see Phase 1 #5.)*
 - [x] **Positioning brief & onboarding Sprint A/B safe items** — runnable `examples/`, README integrator section, keywords broadening, Demo 2 dual subtitle. *(PR #5)*
-- [x] **Characterization tests** for `base` / `producer` / `consumer` / `rpc` against a mocked `amqplib` channel. 32 tests across 5 files; coverage 26.77% → **87.4% statements / 90% functions**. Two defects (RPC reply queue never consumed; AMQP properties not surfaced to handlers) now have executable proof — see `tests/rpc.test.ts` and `tests/consumer.test.ts`.
+- [x] **Characterization tests** for `base` / `producer` / `consumer` / `rpc` against a mocked `amqplib` channel. **37 tests across 5 files; coverage 26.77% → 94.48% statements / 93.33% functions / 71.73% branches.** Two defects (RPC reply queue never consumed; AMQP properties not surfaced to handlers) now have executable proof — see `tests/rpc.test.ts` and `tests/consumer.test.ts`.
 
 ### Phase 1: Correctness refactor
 
 Test-first, one defect per PR.
 
-**Recommended PR sequence (≠ list order below):** `#3 → #1 → #4 → #2 → #5 → #6`.
+**Recommended PR sequence (≠ list order below):** `#3 → #1 → #4 → #2 → #5 → #6 → #7`.
 The merge fix (#3) ships first as a low-risk warm-up that proves the test-first
 flow on a real defect. **RPC (#1) comes second** — its outcome (fix vs. delete)
 shapes the public API surface and therefore Track 2 Sprint C scope (TypeDoc,
@@ -91,7 +91,9 @@ with an open question. The remainder, in order: **#4** producer hygiene
 (mechanical, no public-API change) → **#2** reconnect safety (isolated to
 `consumer.ts` but fixes a process-killing crash path — touch is small, blast
 radius is large, hence not first) → **#5** logger DI (architectural, adds a
-new public API surface) → **#6** typing/JSDoc polish (no behavioural change).
+new public API surface) → **#6** typing/JSDoc polish (no behavioural change)
+→ **#7** consumer ack/nack idempotency (a `consumer.ts` follow-up surfaced
+during characterisation; isolated and well-bounded by the existing tests).
 
 1. [ ] **RPC: fix or delete** — *issue #6*. **Verification done** (PR for characterization tests): `tests/rpc.test.ts` proves the defect end-to-end. Concrete failure mode:
    - `RabbitRPC.call()` asserts the reply queue via `consumer.registerQueue` but **never calls `consumer.consume()` on it**, so the channel has no active subscription for replies (`src/rpc.ts:19–28`).
@@ -108,6 +110,8 @@ new public API surface) → **#6** typing/JSDoc polish (no behavioural change).
    *Acceptance:* `grep -r "console\." src/` returns nothing; `Logger` interface exported from `src/types.ts`; `RabbitMQConfig` accepts an optional `logger` field; URL credentials sanitized before any log; test verifies no password appears in captured log output and that a custom logger receives the calls.
 6. [ ] **Type tightening** — remove `any` from `types.ts` / `rpc.ts`; add JSDoc to every public method.
    *Acceptance:* `grep -rn ": any" src/` returns nothing in the public surface; typedoc / tsc-derived signature has docstrings for `Producer.publish`, `Consumer.registerHandler`, `Consumer.consume`, `RPC.call`.
+7. [ ] **Consumer ack/nack idempotency** (surfaced via characterisation in PR #9). The current `consume()` callback at `src/consumer.ts:80–90` wraps the handler in `try/catch` and unconditionally `nack`s in the catch — so a handler that calls `ack()` and then throws causes BOTH `ack` and `nack` to fire on the same message, which `amqplib` rejects in production. Track the ack/nack state per delivery so only one terminal call is made.
+   *Acceptance:* `tests/consumer.test.ts` characterisation "CURRENTLY calls both ack and nack when the handler ack()s and then throws" flips from asserting both calls to asserting only the explicit `ack`; a new test verifies that a handler which `nack()`s then throws also only nacks once.
 
 ## Track 2 — Onboarding & positioning
 

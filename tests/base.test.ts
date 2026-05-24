@@ -14,14 +14,12 @@ class TestBase extends RabbitMQBase {
     public fakeConnection: FakeConnection
   ) {
     super(config)
-    // @ts-expect-error — protected fields injected for tests.
-    this.connection = fakeConnection
-    // @ts-expect-error — protected fields injected for tests.
-    this.channel = fakeChannel
+    // FakeConnection / FakeChannel are structurally narrower than
+    // amqp.ChannelModel / amqp.Channel; the cast keeps the test isolated from
+    // the full amqplib type surface while exercising the real base.ts code.
+    this.connection = fakeConnection as unknown as typeof this.connection
+    this.channel = fakeChannel as unknown as typeof this.channel
   }
-  /** Expose protected setup methods to tests. */
-  async runSetupExchanges() { await (this as unknown as { setupExchanges: () => Promise<void> }).setupExchanges() }
-  async runSetupQueues() { await (this as unknown as { setupQueues: () => Promise<void> }).setupQueues() }
 }
 
 const baseConfig = (): RabbitMQConfig => ({
