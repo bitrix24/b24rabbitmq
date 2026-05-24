@@ -50,35 +50,31 @@ export abstract class RabbitMQBase {
   async registerQueue(
     queue: QueueParams
   ): Promise<amqp.Replies.AssertQueue> {
-    let assertsOptions: amqp.Options.AssertQueue = {
-      maxPriority: queue.maxPriority ?? 10
-    }
+    const maxPriority = queue.maxPriority ?? 10
 
-    // @todo fix this
-    if (assertsOptions.maxPriority) {
-      assertsOptions = {
-        arguments: {
-          'x-max-priority': assertsOptions.maxPriority
-        },
-        ...assertsOptions
-      }
+    // Build a single `arguments` object so x-max-priority, dead-letter args
+    // and caller-supplied options.arguments all coexist. Earlier code spread
+    // them in three separate steps and accidentally let later spreads wipe
+    // the earlier ones; caller options.arguments now win per-key but do not
+    // replace sibling keys.
+    const mergedArguments: Record<string, unknown> = {
+      'x-max-priority': maxPriority
     }
-
     if (queue.deadLetter) {
-      assertsOptions = {
-        arguments: {
-          'x-dead-letter-exchange': queue.deadLetter.exchange,
-          'x-dead-letter-routing-key': queue.deadLetter.routingKey || ''
-        },
-        ...assertsOptions
-      }
+      mergedArguments['x-dead-letter-exchange'] = queue.deadLetter.exchange
+      mergedArguments['x-dead-letter-routing-key'] = queue.deadLetter.routingKey ?? ''
+    }
+    const { arguments: callerArguments, ...callerRestOptions } = queue.options ?? {}
+    if (callerArguments) {
+      Object.assign(mergedArguments, callerArguments)
     }
 
     const q = await this.channel.assertQueue(
       queue.name || '',
       {
-        ...assertsOptions,
-        ...queue.options
+        maxPriority,
+        ...callerRestOptions,
+        arguments: mergedArguments
       }
     )
 

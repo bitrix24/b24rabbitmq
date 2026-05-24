@@ -21,12 +21,10 @@ export const rabbitMQConfig: RabbitMQConfig = {
   queues: [
     {
       name: 'demo2.work.v1',
-      options: {
-        durable: true,
-        arguments: {
-          'x-dead-letter-exchange': 'demo2.service.v1',
-          'x-dead-letter-routing-key': 'failed'
-        }
+      options: { durable: true },
+      deadLetter: {
+        exchange: 'demo2.service.v1',
+        routingKey: 'failed'
       },
       bindings: [
         { exchange: 'demo2.events.v1', routingKey: 'event.succeeded' }
