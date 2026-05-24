@@ -33,7 +33,9 @@ jobs:
         run: pnpm run typecheck
 
       - name: Test
-        run: pnpm test
+        # test:coverage so the threshold floor is enforced on the publish path
+        # too — `pnpm test` alone would let a coverage regression ship to npm.
+        run: pnpm test:coverage
 
       - name: Build
         run: pnpm build

@@ -1,4 +1,7 @@
-import { vi, type Mock } from 'vitest'
+import { vi } from 'vitest'
+import type { Mock } from 'vitest'
+
+export type { Mock } from 'vitest'
 
 /**
  * Minimal fake of an `amqplib` channel. Every method returns a sensible
@@ -10,16 +13,19 @@ export interface FakeChannel {
   bindQueue: Mock
   prefetch: Mock
   publish: Mock
-  sendToQueue: Mock
   consume: Mock
+  cancel: Mock
   ack: Mock
   nack: Mock
+  ackAll: Mock
+  nackAll: Mock
   close: Mock
 }
 
 export function makeFakeChannel(): FakeChannel {
   return {
-    assertExchange: vi.fn().mockResolvedValue({ exchange: 'x' }),
+    // Echo the requested exchange name back so tests can assert on it.
+    assertExchange: vi.fn(async (name: string) => ({ exchange: name })),
     // assertQueue echoes the requested name back, or invents one when omitted.
     assertQueue: vi.fn(async (name: string) => ({
       queue: name && name.length > 0 ? name : 'auto.generated',
@@ -29,10 +35,12 @@ export function makeFakeChannel(): FakeChannel {
     bindQueue: vi.fn().mockResolvedValue({}),
     prefetch: vi.fn().mockResolvedValue(undefined),
     publish: vi.fn().mockReturnValue(true),
-    sendToQueue: vi.fn().mockReturnValue(true),
     consume: vi.fn().mockResolvedValue({ consumerTag: 'tag' }),
+    cancel: vi.fn().mockResolvedValue({}),
     ack: vi.fn(),
     nack: vi.fn(),
+    ackAll: vi.fn(),
+    nackAll: vi.fn(),
     close: vi.fn().mockResolvedValue(undefined)
   }
 }
@@ -69,3 +77,18 @@ export function makeFakeConnection(channel: FakeChannel = makeFakeChannel()): {
   }
   return { connection, channel }
 }
+
+/**
+ * Convenience helper: extracts the delivery callback registered by
+ * `channel.consume(queueName, callback)`. Returns the callback from the
+ * first matching call.
+ */
+export function getConsumeCallback(
+  channel: FakeChannel,
+  queueName: string
+): (msg: unknown) => Promise<void> {
+  const call = channel.consume.mock.calls.find(([name]) => name === queueName)
+  if (!call) throw new Error(`channel.consume was not called with queue "${queueName}"`)
+  return call[1] as (msg: unknown) => Promise<void>
+}
+

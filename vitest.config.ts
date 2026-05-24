@@ -9,13 +9,14 @@ export default defineConfig({
       reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.ts'],
       // Floor — slightly below current numbers to give a touch of headroom
-      // without letting coverage silently regress. Current: 87.4 / 86.88 /
-      // 90 / 58.69 (statements / lines / functions / branches).
+      // without letting coverage silently regress. Current (post-review):
+      // ~89 / 89 / 92 / 62 (statements / lines / functions / branches),
+      // figures rise after the new reconnect + options-override tests land.
       thresholds: {
         statements: 80,
         lines: 80,
         functions: 85,
-        branches: 50
+        branches: 55
       }
     }
   }

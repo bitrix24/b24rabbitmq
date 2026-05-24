@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import amqp from 'amqplib'
 import { RabbitMQProducer } from '../src/producer'
 import type { RabbitMQConfig } from '../src/types'
@@ -24,6 +24,10 @@ describe('RabbitMQProducer', () => {
     channel = fakes.channel
     vi.mocked(amqp.connect).mockReset()
     vi.mocked(amqp.connect).mockResolvedValue(fakes.connection as unknown as Awaited<ReturnType<typeof amqp.connect>>)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   describe('initialize()', () => {
