@@ -126,6 +126,9 @@ describe('RabbitMQConsumer', () => {
      * listener context this is an uncatchable crash.
      */
     it('throws synchronously at the retries === maxRetries boundary (uncatchable from event listener)', async () => {
+      // Fake timers so the "not.toThrow" branch's setTimeout doesn't leak a
+      // real 1 s timer that would fire during a later test (CI flakiness).
+      vi.useFakeTimers()
       const maxRetries = config.connection.maxRetries
       if (maxRetries === undefined) throw new Error('test config must set maxRetries')
 
