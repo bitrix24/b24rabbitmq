@@ -124,6 +124,11 @@ export class RabbitMQConsumer extends RabbitMQBase {
    * logged and `nack`'d by the library — the handler itself never sees
    * a parse failure.
    *
+   * The library does NOT validate the parsed body — spreading it into
+   * a trusted object (`{ ...trusted, ...msg }`) or assigning to
+   * `Object.prototype`-adjacent keys is the caller's responsibility.
+   * Validate the shape before merging.
+   *
    * @typeParam T the parsed message body shape. The library does not
    *   validate at runtime; supply a narrow type and validate at the
    *   call site if needed.
@@ -135,10 +140,11 @@ export class RabbitMQConsumer extends RabbitMQBase {
     handler: MessageHandler<T>
   ): void {
     // Storage erases T: the map holds `MessageHandler<unknown>` (after the
-    // `any → unknown` tightening of the type alias's default). The cast is
-    // the type-system escape hatch at the boundary — `buildDeliveryCallback`
+    // `any → unknown` tightening of the type alias's default). The explicit
+    // `<unknown>` makes the boundary visible at the call site and survives a
+    // future change to the `MessageHandler` default. `buildDeliveryCallback`
     // invokes the handler with a parsed payload the caller chose to type as T.
-    this.handlers.set(queueName, handler as MessageHandler)
+    this.handlers.set(queueName, handler as MessageHandler<unknown>)
   }
 
   /**

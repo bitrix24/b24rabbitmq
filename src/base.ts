@@ -17,10 +17,10 @@ export abstract class RabbitMQBase {
   }
 
   /**
-   * Open the AMQP connection and channel. Abstract in spirit — the base
-   * implementation throws; `RabbitMQProducer` and `RabbitMQConsumer`
-   * override with their own setup (publish channel vs consumer channel
-   * + reconnect listener).
+   * Open the AMQP connection and channel. Not a TypeScript `abstract`
+   * method — the base implementation throws unless a subclass overrides
+   * it; `RabbitMQProducer` and `RabbitMQConsumer` do exactly that
+   * (publish channel vs consumer channel + reconnect listener).
    */
   async connect(): Promise<void> {
     throw new Error('Need override this function')

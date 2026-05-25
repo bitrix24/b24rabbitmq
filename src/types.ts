@@ -29,8 +29,11 @@ export interface QueueParams {
   options?: amqp.Options.AssertQueue
   /**
    * Maximum supported priority for AMQP priority queues. Translated to
-   * `x-max-priority` in the queue arguments. Set to `0` to opt out of
-   * priority entirely (the key is omitted; AMQP requires 1..255 when set).
+   * `x-max-priority` in the queue arguments. AMQP accepts 1..255; values
+   * `<= 0` are treated as "opt out of priority" and the key is omitted
+   * before the assert (the broker rejects `x-max-priority: 0`). Values
+   * above 255 are not clamped by this library — the broker will reject
+   * the assert. RabbitMQ's own guidance is to stay in the 1..10 range.
    * @default 10
    */
   maxPriority?: number
@@ -116,9 +119,13 @@ export interface RabbitMQConfig {
  * implementations that don't care about a level can supply a noop.
  */
 export interface Logger {
+  /** Verbose-level diagnostic; emitted on hot paths if the implementation honours debug. */
   debug(message: string, ...args: unknown[]): void
+  /** Informational diagnostic — lifecycle transitions, successful connects, etc. */
   info(message: string, ...args: unknown[]): void
+  /** Recoverable anomaly — e.g. a reconnect attempt that failed but will be retried. */
   warn(message: string, ...args: unknown[]): void
+  /** Unrecoverable or noteworthy failure — connect errors, reconnect exhaustion, parse errors. */
   error(message: string, ...args: unknown[]): void
 }
 
@@ -148,8 +155,9 @@ export interface Message {
 export interface MessageOptions extends amqp.Options.Publish {
   /**
    * Message priority for AMQP priority queues. Valid range 0..255 per
-   * the AMQP spec; values >= `QueueParams.maxPriority` are clamped by
-   * the broker.
+   * the AMQP spec; values above `QueueParams.maxPriority` are capped by
+   * the broker. On a non-priority queue (no `x-max-priority` argument)
+   * the broker accepts but ignores this field.
    * @default 5
    */
   priority?: number
@@ -166,6 +174,12 @@ export interface MessageOptions extends amqp.Options.Publish {
  * `nack` always sends `requeue=false` so the message routes through any
  * configured dead-letter exchange. To replay, publish a fresh copy
  * (see `examples/02-retry-dlq`).
+ *
+ * The library does NOT validate payloads at runtime; the `T = unknown`
+ * default forces TypeScript callers to narrow before access, but
+ * provides no JS-level guarantee. For untrusted payloads, validate the
+ * shape (zod / valibot / hand-rolled type guard) inside the handler
+ * before acting on fields.
  *
  * @typeParam T the shape of the parsed message body.
  */
