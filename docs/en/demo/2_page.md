@@ -74,8 +74,8 @@ Bind to `exchange` with the key `delay.6000`.
 * `deadLetter`
 	* `exchange` = `demo2.service.v1`
 	* `routingKey` = `events.service`
-* arguments
-	* `x-message-ttl` = `6000` *(no typed field for TTL — supplied via raw `options.arguments`; library merges it with the typed `deadLetter` keys)*
+* `options.arguments` *(no typed field for TTL — library merges these with the typed `deadLetter` keys above)*
+	* `x-message-ttl` = `6000`
 * bind
 	* `exchange` = `demo2.service.v1`
 	* `routing_key` = `delay.6000`

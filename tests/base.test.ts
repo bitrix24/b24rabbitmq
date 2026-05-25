@@ -91,9 +91,9 @@ describe('RabbitMQBase', () => {
       await base.registerQueue({ name: 'q', maxPriority: 0, bindings: [] })
 
       const opts = channel.assertQueue.mock.calls[0]?.[1] as Record<string, unknown>
-      const args = opts['arguments'] as Record<string, unknown>
-      // AMQP rejects x-max-priority outside 1..255; we don't send it at all.
-      expect(args['x-max-priority']).toBeUndefined()
+      // toStrictEqual locks the shape: arguments IS an object (not stripped
+      // to undefined by a future refactor) and contains exactly zero keys.
+      expect(opts['arguments']).toStrictEqual({})
     })
 
     it('defaults x-dead-letter-routing-key to empty string when routingKey is omitted', async () => {
@@ -187,6 +187,10 @@ describe('RabbitMQBase', () => {
      * the library default; the library-injected dead-letter pair is intact.
      * Catches `Object.assign` order regressions that pass the simpler tests
      * but fail when all four interact.
+     *
+     * The caller-wins semantics for `x-max-priority` rely on `Object.assign`
+     * processing `callerArguments` AFTER the library populates its defaults —
+     * a future refactor that swaps that order must update this assertion.
      */
     it('merges library defaults, deadLetter and caller arguments simultaneously (override + sibling)', async () => {
       base = new TestBase(baseConfig(), channel, connection)
@@ -221,6 +225,17 @@ describe('RabbitMQBase', () => {
       })
       expect(channel.bindQueue).toHaveBeenCalledWith('q', 'x', 'rk')
       expect(channel.bindQueue).toHaveBeenCalledTimes(1)
+    })
+
+    it('defaults the bind routing key to empty string when omitted (no headers)', async () => {
+      // Closes the `binding.routingKey || ''` branch in the no-headers else
+      // path of registerQueue's binding loop.
+      base = new TestBase(baseConfig(), channel, connection)
+      await base.registerQueue({
+        name: 'q',
+        bindings: [{ exchange: 'x' }]
+      })
+      expect(channel.bindQueue).toHaveBeenCalledWith('q', 'x', '')
     })
 
     it('binds with a headers argument when binding.headers is set', async () => {
