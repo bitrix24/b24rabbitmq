@@ -15,7 +15,7 @@ Tests run on [vitest](https://vitest.dev). The goal is fast, deterministic unit 
 ```bash
 pnpm test                                   # whole suite, once
 pnpm test producer                          # only files matching "producer"
-pnpm exec vitest run tests/uuidv7.test.ts -t "encodes the current time"  # single test by name
+pnpm exec vitest run tests/consumer.test.ts -t "passes ONLY the parsed JSON body"  # single test by name
 pnpm test:watch                             # watch mode
 pnpm test:coverage                          # v8 coverage report (text + html + lcov)
 ```
@@ -66,11 +66,11 @@ vi.mocked(amqp.connect).mockResolvedValue(connection as unknown as Awaited<Retur
 
 Then assert against the spies — e.g. that `registerQueue` passed `x-max-priority` / `x-dead-letter-*` in `assertQueue`'s `arguments`, that `publish` serialised the payload to a `Buffer` with the right `priority`, or that `consume` acked on success and nacked on a thrown handler.
 
-For full worked examples see `tests/base.test.ts`, `tests/consumer.test.ts`, `tests/producer.test.ts` and `tests/rpc.test.ts`.
+For full worked examples see `tests/base.test.ts`, `tests/consumer.test.ts` and `tests/producer.test.ts`.
 
 ## Time-dependent code
 
-Anything that reads the clock or schedules timers (`uuidv7`, consumer reconnect backoff) must be tested with fake timers — never with real `setTimeout` or wall-clock comparisons:
+Anything that reads the clock or schedules timers (consumer reconnect backoff, future RPC-style features) must be tested with fake timers — never with real `setTimeout` or wall-clock comparisons:
 
 ```typescript
 vi.useFakeTimers()
@@ -84,4 +84,4 @@ For ordering assertions on UUIDv7, compare the full 48-bit time prefix (first 12
 
 When fixing a [known defect](../../PROJECT-BRIEF.md), first add a test that captures the **current** behaviour, watch it pass, then change the code and update the test to assert the **fixed** behaviour in the same PR. This makes the behavioural change explicit in review.
 
-The Phase 0 characterisation suite (`tests/base.test.ts`, `tests/producer.test.ts`, `tests/consumer.test.ts`, `tests/rpc.test.ts`) is the baseline — most Phase 1 fixes flip one or more of those tests from "asserts the defect" to "asserts the fix" (Phase 1 #3 in particular flips two).
+The Phase 0 characterisation suite (`tests/base.test.ts`, `tests/producer.test.ts`, `tests/consumer.test.ts`) is the baseline — most Phase 1 fixes flip one or more of those tests from "asserts the defect" to "asserts the fix" (Phase 1 #3 flipped two).

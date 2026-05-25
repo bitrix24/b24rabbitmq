@@ -13,7 +13,7 @@ Ship a trustworthy **v0.1** of `@bitrix24/b24rabbitmq` — a small, dependency-l
 The release is "trustworthy" when **all** are true:
 
 - **Correctness**: zero known correctness defects with severity above *minor*; every exported public API works as documented; nothing exported that fails on first call.
-- **Tests**: every exported class has at least characterization-level vitest coverage against a mocked `amqplib` channel; uuidv7 stays at ~100%; coverage threshold floor enforced in CI.
+- **Tests**: every exported class has at least characterization-level vitest coverage against a mocked `amqplib` channel; coverage threshold floor enforced in CI.
 - **Logging**: `src/` contains zero stray `console.*`; all logging goes through an **injectable `Logger` interface** (default is a thin console adapter); consumers wire their own logger (e.g. `@bitrix24/b24jssdk`, `consola`, `pino`); AMQP URL credentials are not leaked to logs.
 - **Docs**: README has a runnable Quickstart and a positioning paragraph for Bitrix24 integrators; `examples/` has at least two runnable end-to-end scenarios; `docs/en/` complete. English only at v0.1 — localization waits for a real user request.
 - **Process**: release is tag-gated (not free `workflow_dispatch`); npm provenance shipped; CI matrix on Node 20 + 22; branch protection on `main`; commitlint on every PR.
@@ -23,7 +23,7 @@ The release is "trustworthy" when **all** are true:
 Sequenced view of what must land — and in roughly what order — for the acceptance criteria above to be met. Side tracks (skills, deployment recipes, additional capabilities) are deliberately **not** on this path.
 
 1. **Track 1 Phase 1 correctness PRs** (six items, see "The plan" below). Approximate order — **Phase 1 items** `#3 → #1 → #4 → #2 → #5 → #6 → #7`. Each PR ships with a regression test: either flipping a Phase 0 characterisation lock (#2, #3, #5) or adding fresh coverage (#1, #4, #6).
-2. **Track 2 Sprint C** — TypeDoc API reference, README badges. Depends on the public-API shape stabilising, so it follows the RPC decision (Phase 1 #1).
+2. **Track 2 Sprint C** — TypeDoc API reference, README badges. The public-API surface is now stable (Producer + Consumer), so Sprint C can land any time after Phase 1.
 3. **Track 3 release flow** — adopt changesets/release-please, tag-triggered publish, branch protection. The last gate before tagging.
 4. **Cut `v0.1`** on a green release pipeline.
 
@@ -41,7 +41,7 @@ Solo-maintainer + AI-assistant pace: roughly 6–8 sequential PRs from current `
 
 | Layer | Choice | Rationale |
 |---|---|---|
-| Runtime | Node.js ^20 \|\| >=22 | Native `fetch`, ESM, BigInt for uuidv7 |
+| Runtime | Node.js ^20 \|\| >=22 | Native `fetch`, ESM |
 | Language | TypeScript 5.x (strict) | Type safety, declaration output |
 | Broker client | `amqplib` ^0.10 (peer) | De-facto Node AMQP 0-9-1 client |
 | Build | `unbuild` (rollup + esbuild) | ESM + `.d.mts`, banner injection |
@@ -57,10 +57,7 @@ src/
 ├── types.ts      # RabbitMQConfig, ExchangeParams, QueueParams, Message, MessageOptions, MessageHandler
 ├── base.ts       # RabbitMQBase: connect (throws unless overridden), setup/register exchanges & queues, disconnect
 ├── producer.ts   # RabbitMQProducer: initialize, connect, publish
-├── consumer.ts   # RabbitMQConsumer: initialize, connect + reconnect, registerHandler, consume
-├── rpc.ts        # RabbitRPC: request/reply over a producer + consumer pair
-└── tools/
-    └── uuidv7.ts # internal: dependency-free UUIDv7 generator for RPC correlation ids (not part of the public exports)
+└── consumer.ts   # RabbitMQConsumer: initialize, connect + reconnect, registerHandler, consume
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the runtime model.
@@ -78,29 +75,25 @@ The work splits into four tracks. Each item carries: **what**, **why**, **accept
 - [x] **Process foundation** — PR CI (lint + typecheck + test + build), commitlint, vitest scaffold, renovate, issue/PR templates, this brief. *(PR #1)*
 - [x] **Dependency refresh** — bring devDeps to latest stable; drop unused runtime deps; clean Dependabot alerts. *(PR #4 added `@bitrix24/b24jssdk`; PR #5 reverted it in favour of an injectable `Logger` interface — see Phase 1 #5.)*
 - [x] **Positioning brief & onboarding Sprint A/B safe items** — runnable `examples/`, README integrator section, keywords broadening, Demo 2 dual subtitle. *(PR #5)*
-- [x] **Characterization tests** for `base` / `producer` / `consumer` / `rpc` against a mocked `amqplib` channel. **37 tests across 5 files; coverage 26.77% → 94.48% statements / 93.33% functions / 71.73% branches.** Two defects (RPC reply queue never consumed; AMQP properties not surfaced to handlers) now have executable proof — see `tests/rpc.test.ts` and `tests/consumer.test.ts`.
+- [x] **Characterization tests** for `base` / `producer` / `consumer` against a mocked `amqplib` channel — see `tests/*.test.ts`. (Phase 0 originally also covered `rpc`; those tests were retired when RPC was dropped from v0.1 scope — see Phase 1 #1 below.)
 
 ### Phase 1: Correctness refactor
 
 Test-first, one defect per PR.
 
-**Recommended PR sequence (≠ list order below):** `#3 → #1 → #4 → #2 → #5 → #6 → #7`.
-The merge fix (#3) ships first as a low-risk warm-up that proves the test-first
-flow on a real defect. **RPC (#1) comes second** — its outcome (fix vs. delete)
-shapes the public API surface and therefore Track 2 Sprint C scope (TypeDoc,
-re-export decision); leaving it for last would shadow every intermediate PR
-with an open question. The remainder, in order: **#4** producer hygiene
-(mechanical, no public-API change) → **#2** reconnect safety (isolated to
-`consumer.ts` but fixes a process-killing crash path — touch is small, blast
-radius is large, hence not first) → **#5** logger DI (architectural, adds a
-new public API surface) → **#6** typing/JSDoc polish (no behavioural change)
-→ **#7** consumer ack/nack idempotency (a `consumer.ts` follow-up surfaced
-during characterisation; isolated and well-bounded by the existing tests).
+**Recommended PR sequence (≠ list order below):** `#3 → #4 → #2 → #5 → #6 → #7`.
+The merge fix (#3) shipped first as a low-risk warm-up that proved the
+test-first flow on a real defect. **#1 (RPC) resolved as "delete"** —
+out of v0.1 scope; the file and its tests are gone. The remainder, in order:
+**#4** producer hygiene (mechanical, no public-API change) → **#2** reconnect
+safety (isolated to `consumer.ts` but fixes a process-killing crash path —
+touch is small, blast radius is large, hence not first) → **#5** logger DI
+(architectural, adds a new public API surface) → **#6** typing/JSDoc polish
+(no behavioural change) → **#7** consumer ack/nack idempotency (a
+`consumer.ts` follow-up surfaced during characterisation; isolated and
+well-bounded by the existing tests).
 
-1. [ ] **RPC: fix or delete** — *issue #6*. **Verification done** (PR for characterization tests): `tests/rpc.test.ts` proves the defect end-to-end. Concrete failure mode:
-   - `RabbitRPC.call()` asserts the reply queue via `consumer.registerQueue` but **never calls `consumer.consume()` on it**, so the channel has no active subscription for replies (`src/rpc.ts:19–28`).
-   - Even if it did, the consumer's delivery callback passes only `JSON.parse(msg.content)` to handlers — AMQP `properties.correlationId` is invisible — so the `msg.correlationId === correlationId` comparison at `src/rpc.ts:40` always fails.
-   *Next:* decide between **(a) fix** (call `consumer.consume()` on the reply queue, surface AMQP properties to handlers — either as a second arg or by passing the wrapped message); or **(b) delete `src/rpc.ts`** and drop RPC from v0.1 scope.
+1. [x] **RPC: deleted from v0.1 scope.** *(Resolved 2026-05-25.)* The defect was verified end-to-end (reply queue never subscribed; AMQP `properties.correlationId` never reached handlers), but fixing it required an architectural change to `MessageHandler` (surface AMQP properties to handlers) for a primitive that no consumer was using yet. Dropped: `src/rpc.ts`, `src/tools/uuidv7.ts` (its only user), `tests/rpc.test.ts`, `tests/uuidv7.test.ts`. Issue #6 closed. If request/reply is needed later it returns as a separate package or a v0.2 feature, built on top of properties-aware handlers (Phase 1 #5 territory).
 2. [ ] **Consumer reconnect safety** — `throw` inside `setTimeout` crashes the process; `this.connect()` is not awaited.
    *Acceptance:* bounded async backoff loop; handlers re-established after reconnect; vitest simulates connection drop and asserts recovery.
 3. [x] **`base.ts registerQueue` — merge `x-max-priority` and dead-letter into one `arguments` object.** *(PR #10.)* Two compounding spread defects were characterised in PR #8/#9 and then flipped to assert the merge: `{arguments: {dlx}, ...assertsOptions}` had let the earlier `assertsOptions.arguments` overwrite dead-letter, and `{...assertsOptions, ...queue.options}` had let caller `options.arguments` wholesale-replace the merged result. PR #10 collapsed all three sources into one `mergedArguments` record, dropped the redundant top-level `maxPriority` field, and added a guard so `maxPriority: 0` no longer ships an invalid `x-max-priority: 0` to the broker. `examples/02-retry-dlq/rabbitmq.config.ts` migrated to the typed `deadLetter` field.
@@ -109,8 +102,8 @@ during characterisation; isolated and well-bounded by the existing tests).
 5. [ ] **Logger migration via DI** — replace stray `console.*` with calls to an injected `Logger` interface (`{ info, warn, error, debug }`); add a tiny default console adapter so the library still works out of the box.
    *Why:* avoids forcing a Bitrix24-specific SDK dependency on non-Bitrix24 consumers; lets a Bitrix24 user pass in the `@bitrix24/b24jssdk` logger themselves; lets others wire `pino` / `consola` / silent.
    *Acceptance:* `grep -r "console\." src/` returns nothing; `Logger` interface exported from `src/types.ts`; `RabbitMQConfig` accepts an optional `logger` field; URL credentials sanitized before any log; test verifies no password appears in captured log output and that a custom logger receives the calls.
-6. [ ] **Type tightening** — remove `any` from `types.ts` / `rpc.ts`; add JSDoc to every public method.
-   *Acceptance:* `grep -rn ": any" src/` returns nothing in the public surface; typedoc / tsc-derived signature has docstrings for `Producer.publish`, `Consumer.registerHandler`, `Consumer.consume`, `RPC.call`.
+6. [ ] **Type tightening** — remove `any` from `types.ts`; add JSDoc to every public method.
+   *Acceptance:* `grep -rn ": any" src/` returns nothing in the public surface; typedoc / tsc-derived signature has docstrings for `Producer.publish`, `Consumer.registerHandler`, `Consumer.consume`.
 7. [ ] **Consumer ack/nack idempotency** (surfaced via characterisation in PR #9). The current `consume()` callback at `src/consumer.ts:80–90` wraps the handler in `try/catch` and unconditionally `nack`s in the catch — so a handler that calls `ack()` and then throws causes BOTH `ack` and `nack` to fire on the same message, which `amqplib` rejects in production. Track the ack/nack state per delivery so only one terminal call is made.
    *Acceptance:* `tests/consumer.test.ts` characterisation "CURRENTLY calls both ack and nack when the handler ack()s and then throws" flips from asserting both calls to asserting only the explicit `ack`; a new test verifies that a handler which `nack()`s then throws also only nacks once.
 
@@ -121,7 +114,6 @@ during characterisation; isolated and well-bounded by the existing tests).
 - [x] **Runnable `examples/`** — `01-uniform-distribution` and `02-retry-dlq` linked from README. *(PR #5)*
 - [x] **`package.json` keywords** broadened and lowercased. *(PR #5)*
 - [x] **"Not only for Bitrix24" tagline** in README. *(PR #5)*
-- [x] **RPC removed from public exports** until verified — `src/index.ts` no longer re-exports `RabbitRPC`. Re-introduction is gated on Track 1 Phase 1 #1.
 - [x] **"Known limitations" consolidated** into Track 1 Phase 1 above; `AGENTS.md` and `docs/ARCHITECTURE.md` now link back instead of duplicating the list.
 
 ### Sprint B — regional commitment
@@ -164,7 +156,6 @@ Open as a working board in [issue #2](https://github.com/bitrix24/b24rabbitmq/is
 - [ ] **Issue Forms** — migrate `.github/ISSUE_TEMPLATE/*.md` to YAML forms with required fields.
 - [ ] **renovate `rangeStrategy`** reconsidered — `bump` vs `update-lockfile` for a published library.
 - [ ] **a11y for diagrams** — replace ASCII art in `docs/ARCHITECTURE.md` / this file with Mermaid.
-- [ ] **uuidv7 full-UUID monotonicity** — assert ordering on the whole UUID string, not just the 48-bit time prefix.
 
 ## Track 4 — Capabilities (after v0.1)
 
