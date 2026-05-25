@@ -1,7 +1,7 @@
 <!--
 PR title must follow Conventional Commits, e.g.:
   feat(consumer): add graceful reconnect
-  fix(rpc): consume reply queue
+  fix(base): merge x-max-priority and dead-letter arguments
 CI lints the title and every commit.
 -->
 

@@ -78,8 +78,6 @@ vi.setSystemTime(1_700_000_000_000)
 // ... generate values, advance time with vi.advanceTimersByTimeAsync(ms)
 ```
 
-For ordering assertions on UUIDv7, compare the full 48-bit time prefix (first 12 hex chars), not a shorter slice, and assert strict ordering only when time actually advances.
-
 ## Characterization tests
 
 When fixing a [known defect](../../PROJECT-BRIEF.md), first add a test that captures the **current** behaviour, watch it pass, then change the code and update the test to assert the **fixed** behaviour in the same PR. This makes the behavioural change explicit in review.

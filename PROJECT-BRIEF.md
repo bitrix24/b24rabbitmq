@@ -6,7 +6,7 @@
 
 ## Goal
 
-Ship a trustworthy **v0.1** of `@bitrix24/b24rabbitmq` — a small, dependency-light, config-driven TypeScript wrapper over [`amqplib`](https://github.com/amqp-node/amqplib) with `Producer`, `Consumer` and `RPC` primitives for integrating Bitrix24 applications (and any Node.js + RabbitMQ service) with sane defaults: reconnect, dead-letter, priority, declarative topology. ESM only.
+Ship a trustworthy **v0.1** of `@bitrix24/b24rabbitmq` — a small, dependency-light, config-driven TypeScript wrapper over [`amqplib`](https://github.com/amqp-node/amqplib) with `Producer` and `Consumer` primitives for integrating Bitrix24 applications (and any Node.js + RabbitMQ service) with sane defaults: reconnect, dead-letter, priority, declarative topology. ESM only. (Request/reply is intentionally out of scope for v0.1 — see Phase 1 #1.)
 
 ## Acceptance criteria for v0.1
 
@@ -22,7 +22,7 @@ The release is "trustworthy" when **all** are true:
 
 Sequenced view of what must land — and in roughly what order — for the acceptance criteria above to be met. Side tracks (skills, deployment recipes, additional capabilities) are deliberately **not** on this path.
 
-1. **Track 1 Phase 1 correctness PRs** (six items, see "The plan" below). Approximate order — **Phase 1 items** `#3 → #1 → #4 → #2 → #5 → #6 → #7`. Each PR ships with a regression test: either flipping a Phase 0 characterisation lock (#2, #3, #5) or adding fresh coverage (#1, #4, #6).
+1. **Track 1 Phase 1 correctness PRs** (five remaining items, see "The plan" below). Approximate order — **Phase 1 items** `#3 → #4 → #2 → #5 → #6 → #7` (#1 resolved as delete in PR #12). Each remaining PR ships with a regression test: either flipping a Phase 0 characterisation lock (#2, #3, #5) or adding fresh coverage (#4, #6, #7).
 2. **Track 2 Sprint C** — TypeDoc API reference, README badges. The public-API surface is now stable (Producer + Consumer), so Sprint C can land any time after Phase 1.
 3. **Track 3 release flow** — adopt changesets/release-please, tag-triggered publish, branch protection. The last gate before tagging.
 4. **Cut `v0.1`** on a green release pipeline.
@@ -93,7 +93,7 @@ touch is small, blast radius is large, hence not first) → **#5** logger DI
 `consumer.ts` follow-up surfaced during characterisation; isolated and
 well-bounded by the existing tests).
 
-1. [x] **RPC: deleted from v0.1 scope.** *(Resolved 2026-05-25.)* The defect was verified end-to-end (reply queue never subscribed; AMQP `properties.correlationId` never reached handlers), but fixing it required an architectural change to `MessageHandler` (surface AMQP properties to handlers) for a primitive that no consumer was using yet. Dropped: `src/rpc.ts`, `src/tools/uuidv7.ts` (its only user), `tests/rpc.test.ts`, `tests/uuidv7.test.ts`. Issue #6 closed. If request/reply is needed later it returns as a separate package or a v0.2 feature, built on top of properties-aware handlers (Phase 1 #5 territory).
+1. [x] **RPC: deleted from v0.1 scope.** *(Resolved 2026-05-25.)* The defect was verified end-to-end (reply queue never subscribed; AMQP `properties.correlationId` never reached handlers), but fixing it required an architectural change to `MessageHandler` (surface AMQP properties to handlers) for a primitive that no consumer was using yet. Dropped: `src/rpc.ts`, `src/tools/uuidv7.ts` (its only user), `tests/rpc.test.ts`, `tests/uuidv7.test.ts`. Issue #6 closed. If request/reply is needed later it returns as a separate package or a v0.2 feature, built on top of properties-aware handlers (a Track 4 capability, post-v0.1 — Phase 1 #5 is the logger DI, unrelated).
 2. [ ] **Consumer reconnect safety** — `throw` inside `setTimeout` crashes the process; `this.connect()` is not awaited.
    *Acceptance:* bounded async backoff loop; handlers re-established after reconnect; vitest simulates connection drop and asserts recovery.
 3. [x] **`base.ts registerQueue` — merge `x-max-priority` and dead-letter into one `arguments` object.** *(PR #10.)* Two compounding spread defects were characterised in PR #8/#9 and then flipped to assert the merge: `{arguments: {dlx}, ...assertsOptions}` had let the earlier `assertsOptions.arguments` overwrite dead-letter, and `{...assertsOptions, ...queue.options}` had let caller `options.arguments` wholesale-replace the merged result. PR #10 collapsed all three sources into one `mergedArguments` record, dropped the redundant top-level `maxPriority` field, and added a guard so `maxPriority: 0` no longer ships an invalid `x-max-priority: 0` to the broker. `examples/02-retry-dlq/rabbitmq.config.ts` migrated to the typed `deadLetter` field.
@@ -140,7 +140,7 @@ Each item carries the same WHAT / WHY / ACCEPTANCE shape; addressed when the dep
   *Acceptance:* selective log of non-sensitive envelope fields + comment about PII risk.
 - [ ] **README integrator section — `amqps://user:pass@host` URL form** advertises credentials in a string that current logging would leak.
   *Acceptance:* once Track 1 #5 lands, show a composed `{ hostname, username, password }` config form instead.
-- [x] **`package.json` `keywords` — `rpc` removed** until issue #6 resolves.
+- [x] **`package.json` `keywords` — `rpc` removed** *(PR #10)*. Stays removed — Phase 1 #1 resolved as delete in PR #12.
 
 ## Track 3 — Process & infrastructure
 
@@ -202,4 +202,4 @@ The library itself does not deploy — `npm install` is the whole story. But int
 - [`AGENTS.md`](AGENTS.md) — operational guide for AI assistants.
 - [`skills/`](skills/) — agent-readable workflow recipes (Track 5).
 - [`deployment/`](deployment/) — deployment recipes for worker services (Track 6).
-- Open issues: [#2](https://github.com/bitrix24/b24rabbitmq/issues/2) (Track 3 discussion board), [#6](https://github.com/bitrix24/b24rabbitmq/issues/6) (verify RPC).
+- Open issues: [#2](https://github.com/bitrix24/b24rabbitmq/issues/2) (Track 3 discussion board), [#11](https://github.com/bitrix24/b24rabbitmq/issues/11) (examples not type-checked).

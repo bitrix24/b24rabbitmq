@@ -81,6 +81,7 @@ The canonical list lives in [`PROJECT-BRIEF.md`](PROJECT-BRIEF.md) under **Track
 - Public API change is intentional and reflected in `src/index.ts` + docs.
 - Docs/examples updated if behaviour changed; `CHANGELOG.md` touched for user-facing changes.
 - No new runtime dependency unless justified; `amqplib` stays a peer.
+- **For any removal or signature change to a public export** (pre-v0.1 has no SemVer commitment, but still): verify known downstream consumers — currently [`bitrix24/app-template-automation-rules`](https://github.com/bitrix24/app-template-automation-rules) — are unaffected; note the result in the PR description.
 
 ## Resources
 
