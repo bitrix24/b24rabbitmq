@@ -55,11 +55,8 @@ describe('RabbitMQConsumer', () => {
     })
   })
 
-  describe('reconnect (current behaviour)', () => {
-    /**
-     * Characterisation of PROJECT-BRIEF Track 1 #2: handleReconnect schedules
-     * `this.connect()` inside a setTimeout — fire-and-forget, not awaited.
-     */
+  describe('reconnect', () => {
+    /** The 'close' listener wires the reconnect loop; the loop is awaitable. */
     it('schedules a reconnect via setTimeout when the connection closes', async () => {
       vi.useFakeTimers()
       const consumer = new RabbitMQConsumer(config)
@@ -67,89 +64,191 @@ describe('RabbitMQConsumer', () => {
 
       const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
       connection.emitClose()
-      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 1000)
-    })
-
-    /** Network-class errors (ENOTFOUND, ECONNREFUSED) are rethrown — no retry. */
-    it('rethrows ENOTFOUND without scheduling a reconnect', async () => {
-      vi.useFakeTimers()
-      vi.mocked(amqp.connect).mockReset()
-      vi.mocked(amqp.connect).mockRejectedValue(new Error('ENOTFOUND amqp://nowhere'))
-      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
-
-      const consumer = new RabbitMQConsumer(config)
-      await expect(consumer.connect()).rejects.toThrow('ENOTFOUND')
-      expect(setTimeoutSpy).not.toHaveBeenCalled()
-    })
-
-    /** Generic (non-network) errors go through handleReconnect. */
-    it('schedules a reconnect when amqp.connect fails with a generic (non-network) error', async () => {
-      vi.useFakeTimers()
-      vi.mocked(amqp.connect).mockReset()
-      vi.mocked(amqp.connect).mockRejectedValue(new Error('something else'))
-      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
-
-      const consumer = new RabbitMQConsumer(config)
-      await consumer.connect()
+      // The reconnect loop sleeps `reconnectInterval` between attempts.
       expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 1000)
     })
 
     /**
-     * Defect lock: the reconnect timer callback increments `retries` and
-     * fires a non-awaited `this.connect()`. We stub `connect` so the
-     * successful re-connection branch (which resets retries to 0) doesn't
-     * mask the increment; this also documents the fire-and-forget call.
+     * `connect()` no longer special-cases network errors — every failure
+     * propagates to the caller. The reconnect loop in `handleReconnect()`
+     * catches errors and retries; `initialize()` lets the original error
+     * surface so the app can fail fast on a wrong URL.
      */
-    it('increments retries and re-invokes connect() (not awaited) when the reconnect timer fires', async () => {
+    it('connect() propagates ENOTFOUND to the caller without scheduling a reconnect itself', async () => {
+      vi.mocked(amqp.connect).mockReset()
+      vi.mocked(amqp.connect).mockRejectedValue(new Error('ENOTFOUND amqp://nowhere'))
+
+      const consumer = new RabbitMQConsumer(config)
+      await expect(consumer.connect()).rejects.toThrow('ENOTFOUND')
+    })
+
+    /**
+     * On a successful reconnect, the topology is re-asserted and every
+     * queue that had an active `consume()` subscription is re-subscribed
+     * — so message delivery resumes without the caller doing anything.
+     */
+    it('re-asserts topology and re-subscribes consumers after a successful reconnect', async () => {
       vi.useFakeTimers()
       const consumer = new RabbitMQConsumer(config)
       await consumer.initialize()
+      consumer.registerHandler('q1', vi.fn())
+      await consumer.consume('q1')
 
-      // Replace connect with a no-op so the increment isn't immediately
-      // reset by the success branch inside the original connect().
-      const reconnectSpy = vi.spyOn(consumer, 'connect').mockResolvedValue(undefined)
+      // Baseline call counts after initial setup.
+      const assertExchangeInitial = channel.assertExchange.mock.calls.length
+      const assertQueueInitial = channel.assertQueue.mock.calls.length
+      const consumeInitial = channel.consume.mock.calls.length
 
-      // @ts-expect-error — access private field for characterisation.
-      expect(consumer.retries).toBe(0)
+      // Drop the connection — reconnect loop should fire.
+      connection.emitClose()
+      await vi.advanceTimersByTimeAsync(1000)
+
+      expect(channel.assertExchange.mock.calls.length).toBeGreaterThan(assertExchangeInitial)
+      expect(channel.assertQueue.mock.calls.length).toBeGreaterThan(assertQueueInitial)
+      expect(channel.consume.mock.calls.length).toBeGreaterThan(consumeInitial)
+      // The most recent consume was for 'q1' — the queue we had subscribed to.
+      const lastConsumeCall = channel.consume.mock.calls.at(-1) as [string, unknown]
+      expect(lastConsumeCall[0]).toBe('q1')
+    })
+
+    /**
+     * After a successful reconnect the retries counter resets to 0, so a
+     * later disconnect gets a fresh budget of attempts.
+     */
+    it('resets retries to 0 after a successful reconnect', async () => {
+      vi.useFakeTimers()
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
 
       connection.emitClose()
       await vi.advanceTimersByTimeAsync(1000)
 
       // @ts-expect-error — access private field for characterisation.
-      expect(consumer.retries).toBe(1)
-      expect(reconnectSpy).toHaveBeenCalledTimes(1)
+      expect(consumer.retries).toBe(0)
     })
 
     /**
-     * Defect lock (PROJECT-BRIEF Phase 1 #2): handleReconnect throws
-     * synchronously when retries are exhausted. Called from an event
-     * listener context this is an uncatchable crash.
+     * Concurrent 'close' events (e.g. broker drops + error event firing
+     * close again) do NOT kick off parallel reconnect loops.
      */
-    it('throws synchronously at the retries === maxRetries boundary (uncatchable from event listener)', async () => {
-      // Fake timers so the "not.toThrow" branch's setTimeout doesn't leak a
-      // real 1 s timer that would fire during a later test (CI flakiness).
+    it('does not start a second reconnect loop while one is already in progress', async () => {
       vi.useFakeTimers()
-      const maxRetries = config.connection.maxRetries
-      if (maxRetries === undefined) throw new Error('test config must set maxRetries')
+      // Make connect hang on the second call so the first loop is still
+      // running when we emit the second close.
+      let secondConnectResolve: () => void = () => {}
+      const secondConnectPromise = new Promise<typeof connection>((resolve) => {
+        secondConnectResolve = () => resolve(connection)
+      })
+      vi.mocked(amqp.connect)
+        .mockResolvedValueOnce(connection as unknown as Awaited<ReturnType<typeof amqp.connect>>)
+        .mockReturnValueOnce(secondConnectPromise as unknown as ReturnType<typeof amqp.connect>)
 
       const consumer = new RabbitMQConsumer(config)
       await consumer.initialize()
 
-      // Just-below-boundary does NOT throw — schedules the next attempt.
-      // @ts-expect-error — access private field for characterisation.
-      consumer.retries = maxRetries - 1
-      expect(() => {
-        // @ts-expect-error — access private method for characterisation.
-        consumer.handleReconnect()
-      }).not.toThrow()
+      connection.emitClose()
+      // Advance past the first reconnect's sleep so the second amqp.connect
+      // call begins (and now hangs on `secondConnectPromise`).
+      await vi.advanceTimersByTimeAsync(1000)
 
-      // At-or-above boundary throws. Locks the current `>=` guard.
-      // @ts-expect-error — access private field for characterisation.
-      consumer.retries = maxRetries
-      expect(() => {
-        // @ts-expect-error — access private method for characterisation.
-        consumer.handleReconnect()
-      }).toThrow('Max connection retries exceeded')
+      const connectCallsAfterFirstClose = vi.mocked(amqp.connect).mock.calls.length
+
+      // Second close fires while the first reconnect is still in flight.
+      connection.emitClose()
+      await Promise.resolve()
+
+      // No additional amqp.connect call should have started.
+      expect(vi.mocked(amqp.connect).mock.calls.length).toBe(connectCallsAfterFirstClose)
+
+      // Clean up: release the hanging connect.
+      secondConnectResolve()
+    })
+
+    /**
+     * When retries are exhausted, `handleReconnect` LOGS and returns —
+     * no synchronous throw out of the event listener, which used to be
+     * an uncatchable crash path.
+     */
+    it('logs and gives up at maxRetries without throwing (no uncatchable crash)', async () => {
+      vi.useFakeTimers()
+      // Force every reconnect attempt to fail so we hit the give-up branch.
+      vi.mocked(amqp.connect).mockReset()
+      vi.mocked(amqp.connect)
+        .mockResolvedValueOnce(connection as unknown as Awaited<ReturnType<typeof amqp.connect>>)
+        .mockRejectedValue(new Error('still down'))
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+
+      connection.emitClose()
+      // Drive the loop through all maxRetries attempts.
+      for (let i = 0; i < (config.connection.maxRetries ?? 5); i++) {
+        await vi.advanceTimersByTimeAsync(1000)
+      }
+
+      // Process is still alive — no throw escaped. Loop logged the give-up.
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('max connection retries')
+      )
+    })
+
+    /** `maxRetries: 0` disables reconnect entirely with a clear log message. */
+    it('logs "reconnect disabled" when maxRetries is 0 (no attempt made)', async () => {
+      const noRetryConfig: RabbitMQConfig = {
+        ...config,
+        connection: { ...config.connection, maxRetries: 0 }
+      }
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+      const consumer = new RabbitMQConsumer(noRetryConfig)
+      await consumer.initialize()
+      const connectCallsBeforeClose = vi.mocked(amqp.connect).mock.calls.length
+
+      connection.emitClose()
+      await Promise.resolve()
+
+      // No second amqp.connect call — the loop never entered.
+      expect(vi.mocked(amqp.connect).mock.calls.length).toBe(connectCallsBeforeClose)
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('reconnect disabled')
+      )
+    })
+
+    /**
+     * The connection's 'error' event listener (separate from 'close') just
+     * logs and lets 'close' drive recovery — it does not throw or trigger
+     * a second reconnect path.
+     */
+    it("logs but does not throw when the connection emits an 'error' event", async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+
+      expect(() => connection.emitError(new Error('ECONNRESET'))).not.toThrow()
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[RabbitMQ::Consumer] connection error',
+        expect.stringContaining('ECONNRESET')
+      )
+    })
+
+    /** Default `maxRetries` / `reconnectInterval` apply when the config omits them. */
+    it('falls back to default maxRetries=5 and reconnectInterval=5000 when both are omitted', async () => {
+      vi.useFakeTimers()
+      const minimalConfig: RabbitMQConfig = {
+        connection: { url: 'amqp://localhost' },
+        exchanges: [{ name: 'ex', type: 'direct' }],
+        queues: []
+      }
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+
+      const consumer = new RabbitMQConsumer(minimalConfig)
+      await consumer.initialize()
+
+      connection.emitClose()
+      // The reconnect loop sleeps the default 5000ms between attempts.
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5000)
     })
   })
 
@@ -169,6 +268,59 @@ describe('RabbitMQConsumer', () => {
       await callback(msg)
       // unregistered: still only the one prior invocation
       expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    /**
+     * Regression test for a bug introduced by Phase 1 #2: `unRegisterHandler`
+     * used to only remove the handler from the map, but the reconnect path
+     * would still re-subscribe the queue from `subscribedQueues`. Result:
+     * messages arrived at a dead callback and stayed un-acked, eventually
+     * blocking the queue (with prefetchCount=1 the broker stops delivering).
+     */
+    it('unRegisterHandler also drops the queue from subscribedQueues so reconnect does NOT re-subscribe a dead handler', async () => {
+      vi.useFakeTimers()
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+      consumer.registerHandler('q1', vi.fn())
+      await consumer.consume('q1')
+
+      consumer.unRegisterHandler('q1')
+
+      const consumeCallsBeforeClose = channel.consume.mock.calls.length
+      connection.emitClose()
+      await vi.advanceTimersByTimeAsync(1000)
+
+      // Reconnect happened (channel.assertExchange called again) but channel.consume
+      // was NOT called for 'q1' because we dropped it from subscribedQueues.
+      const newConsumeCalls = channel.consume.mock.calls.slice(consumeCallsBeforeClose)
+      expect(newConsumeCalls.some(([name]) => name === 'q1')).toBe(false)
+    })
+  })
+
+  describe('disconnect()', () => {
+    /**
+     * Without the override, `subscribedQueues`, `handlers`, `retries` and
+     * `reconnectInProgress` would leak across a disconnect+initialize
+     * cycle and bite anyone reusing a consumer instance.
+     */
+    it('clears internal state (subscribedQueues, handlers, retries) so the consumer can be re-initialized cleanly', async () => {
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+      consumer.registerHandler('q1', vi.fn())
+      await consumer.consume('q1')
+      // @ts-expect-error — read private state for the assertion.
+      consumer.retries = 2
+
+      await consumer.disconnect()
+
+      // @ts-expect-error
+      expect(consumer.retries).toBe(0)
+      // @ts-expect-error
+      expect(consumer.subscribedQueues.size).toBe(0)
+      // @ts-expect-error
+      expect(consumer.handlers.size).toBe(0)
+      // @ts-expect-error
+      expect(consumer.reconnectInProgress).toBe(false)
     })
   })
 

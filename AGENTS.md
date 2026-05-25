@@ -10,7 +10,7 @@ Guidance for AI coding agents (Claude Code, Cursor, Copilot, etc.) working in th
 
 `@bitrix24/b24rabbitmq` is a small, dependency-light **ESM** TypeScript library that wraps [`amqplib`](https://github.com/amqp-node/amqplib) with config-driven `Producer` and `Consumer` primitives for integrating Bitrix24 applications (or any Node.js service) with RabbitMQ. `amqplib` is a **peer** dependency; there are no runtime dependencies. Logging is wired via DI — consumers pass their own `Logger` if they want one. Build is ESM-only via `unbuild`. **No RPC / request-reply primitive** at v0.1 — see `PROJECT-BRIEF.md` Phase 1 #1 for rationale; build it on top of Producer + Consumer if you need it, or wait for v0.2.
 
-The project is being reanimated (pre-`v0.1`). Several parts of the runtime code are **knowingly broken or incomplete** and scheduled for a test-first refactor — see [Known limitations](#known-limitations) before "fixing" something that looks wrong.
+The project is being reanimated (pre-`v0.1`). A handful of remaining items (logger DI, typing polish, ack/nack idempotency) are scheduled for a test-first refactor — see [Known limitations](#known-limitations) before "fixing" something that looks wrong.
 
 ## Project structure
 
@@ -58,7 +58,7 @@ Before opening a PR, all four gates must pass locally: `pnpm lint`, `pnpm typech
 The whole library is config-driven: one `RabbitMQConfig` object (connection, `exchanges[]`, `queues[]` with `bindings`/`maxPriority`/`deadLetter`, `channel.prefetchCount`) declares the topology. The class hierarchy:
 
 - `RabbitMQBase` holds `connection`/`channel`, asserts exchanges and queues, and exposes `disconnect()`. `connect()` is **not** a TypeScript `abstract` method — it throws unless a subclass overrides it.
-- `RabbitMQProducer` / `RabbitMQConsumer` each implement `connect()` and an `initialize()` that opens the connection then sets up topology. The Consumer additionally wires reconnect and `registerHandler`/`consume`.
+- `RabbitMQProducer` / `RabbitMQConsumer` each implement `connect()` and an `initialize()` that opens the connection then sets up topology. The Consumer additionally wires a bounded async reconnect loop on the connection's `'close'` event — on recovery it re-asserts the topology and re-subscribes every queue that had an active `consume()` — and `registerHandler` / `consume`. `RabbitMQConsumer.disconnect()` overrides the base to clear the reconnect-tracking state so an instance can be re-initialised cleanly.
 
 Lifecycle to keep correct in code and docs: **construct → `initialize()` → (consumer) `registerHandler()` + `consume()` → (producer) `publish()`**. Re-publishing from inside a consumer handler must go through a `RabbitMQProducer` — a Consumer cannot publish.
 
