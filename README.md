@@ -5,7 +5,7 @@
 [![license](https://img.shields.io/npm/l/@bitrix24/b24rabbitmq.svg)](LICENSE)
 [![node](https://img.shields.io/node/v/@bitrix24/b24rabbitmq.svg)](package.json)
 
-Config-driven `Producer`, `Consumer` and `RPC` primitives over [`amqplib`](https://github.com/amqp-node/amqplib) for integrating Bitrix24 applications with RabbitMQ. Declare your exchanges, queues and bindings once; get priority and dead-letter handling out of the box.
+Config-driven `Producer` and `Consumer` primitives over [`amqplib`](https://github.com/amqp-node/amqplib) for integrating Bitrix24 applications with RabbitMQ. Declare your exchanges, queues and bindings once; get priority and dead-letter handling out of the box.
 
 > Built primarily for Bitrix24 integrators, but works for any Node.js service that needs RabbitMQ with sensible defaults.
 

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Removed
+
+* **`RabbitRPC` dropped from v0.1 scope.** The class was already unexported from the public barrel (since PR #5) pending verification; the verification confirmed two compounding defects (reply queue never subscribed; AMQP `properties.correlationId` not surfaced to handlers). Fixing them required an architectural change to `MessageHandler` for a primitive that no consumer was using yet — not justified for v0.1. Removed: `src/rpc.ts`, `src/tools/uuidv7.ts` (its only user), and their tests. If request/reply is needed, build it on top of `Producer` + `Consumer` for now; a properties-aware RPC may return in v0.2.
+
 ### Bug Fixes
 
 * **base/registerQueue:** merge `x-max-priority`, dead-letter and caller-supplied `options.arguments` into a single `arguments` object passed to `channel.assertQueue`. Two compounding spread defects previously caused (a) the dead-letter pair to be silently dropped when both `maxPriority` and `deadLetter` were set, and (b) caller-supplied `options.arguments` to wholesale-replace the library-injected keys. **Behavioural change** for any consumer that previously combined raw `x-dead-letter-*` keys with `maxPriority`: both now reach the broker (correct), where before only the priority did. The redundant top-level `maxPriority` field is no longer passed, so explicit overrides via `options.arguments['x-max-priority']` now take effect on the wire. `maxPriority: 0` no longer ships an invalid `x-max-priority: 0` (AMQP requires 1–255); the key is omitted. (#10)

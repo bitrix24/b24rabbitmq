@@ -34,8 +34,8 @@ All of `lint`, `typecheck`, `test`, `build` run in CI on every PR. Run them loca
 See [`.github/contributing/testing.md`](.github/contributing/testing.md) for conventions and recipes (mocking `amqplib`, fake timers, single-test runs).
 
 - Tests live in `tests/**/*.test.ts` and run on [vitest](https://vitest.dev).
-- Pure logic (e.g. `uuidv7`) is tested directly.
-- Broker-touching code (`base`/`producer`/`consumer`/`rpc`) should be tested against a **mocked `amqplib` channel** — do not require a live RabbitMQ in unit tests.
+- Pure logic is tested directly.
+- Broker-touching code (`base`/`producer`/`consumer`) should be tested against a **mocked `amqplib` channel** — do not require a live RabbitMQ in unit tests.
 - Every behavioural change ships with a test. When fixing a known bug, add a regression test that fails first.
 - **Phase 1 correctness fixes** (see [`PROJECT-BRIEF.md`](PROJECT-BRIEF.md)) must land **after** the characterization tests that lock current behaviour — open/merge those first so the refactor has a baseline.
 
