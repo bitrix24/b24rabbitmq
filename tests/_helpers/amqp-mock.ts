@@ -56,16 +56,18 @@ export interface FakeConnection {
   close: Mock
   /** Trigger the registered 'close' listener — used to characterise reconnect. */
   emitClose: () => void
+  /** Trigger the registered 'error' listener — used to characterise error logging. */
+  emitError: (error: Error) => void
 }
 
 export function makeFakeConnection(channel: FakeChannel = makeFakeChannel()): {
   connection: FakeConnection
   channel: FakeChannel
 } {
-  const listeners = new Map<string, (() => void)[]>()
+  const listeners = new Map<string, ((...args: unknown[]) => void)[]>()
   const connection: FakeConnection = {
     createChannel: vi.fn().mockResolvedValue(channel),
-    on: vi.fn((event: string, cb: () => void) => {
+    on: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
       const arr = listeners.get(event) ?? []
       arr.push(cb)
       listeners.set(event, arr)
@@ -73,6 +75,9 @@ export function makeFakeConnection(channel: FakeChannel = makeFakeChannel()): {
     close: vi.fn().mockResolvedValue(undefined),
     emitClose: () => {
       for (const cb of listeners.get('close') ?? []) cb()
+    },
+    emitError: (error: Error) => {
+      for (const cb of listeners.get('error') ?? []) cb(error)
     }
   }
   return { connection, channel }

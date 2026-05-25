@@ -192,6 +192,64 @@ describe('RabbitMQConsumer', () => {
         expect.stringContaining('max connection retries')
       )
     })
+
+    /** `maxRetries: 0` disables reconnect entirely with a clear log message. */
+    it('logs "reconnect disabled" when maxRetries is 0 (no attempt made)', async () => {
+      const noRetryConfig: RabbitMQConfig = {
+        ...config,
+        connection: { ...config.connection, maxRetries: 0 }
+      }
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+      const consumer = new RabbitMQConsumer(noRetryConfig)
+      await consumer.initialize()
+      const connectCallsBeforeClose = vi.mocked(amqp.connect).mock.calls.length
+
+      connection.emitClose()
+      await Promise.resolve()
+
+      // No second amqp.connect call — the loop never entered.
+      expect(vi.mocked(amqp.connect).mock.calls.length).toBe(connectCallsBeforeClose)
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('reconnect disabled')
+      )
+    })
+
+    /**
+     * The connection's 'error' event listener (separate from 'close') just
+     * logs and lets 'close' drive recovery — it does not throw or trigger
+     * a second reconnect path.
+     */
+    it("logs but does not throw when the connection emits an 'error' event", async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+
+      expect(() => connection.emitError(new Error('ECONNRESET'))).not.toThrow()
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[RabbitMQ::Consumer] connection error',
+        expect.stringContaining('ECONNRESET')
+      )
+    })
+
+    /** Default `maxRetries` / `reconnectInterval` apply when the config omits them. */
+    it('falls back to default maxRetries=5 and reconnectInterval=5000 when both are omitted', async () => {
+      vi.useFakeTimers()
+      const minimalConfig: RabbitMQConfig = {
+        connection: { url: 'amqp://localhost' },
+        exchanges: [{ name: 'ex', type: 'direct' }],
+        queues: []
+      }
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+
+      const consumer = new RabbitMQConsumer(minimalConfig)
+      await consumer.initialize()
+
+      connection.emitClose()
+      // The reconnect loop sleeps the default 5000ms between attempts.
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5000)
+    })
   })
 
   describe('handlers', () => {
@@ -210,6 +268,59 @@ describe('RabbitMQConsumer', () => {
       await callback(msg)
       // unregistered: still only the one prior invocation
       expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    /**
+     * Regression test for a bug introduced by Phase 1 #2: `unRegisterHandler`
+     * used to only remove the handler from the map, but the reconnect path
+     * would still re-subscribe the queue from `subscribedQueues`. Result:
+     * messages arrived at a dead callback and stayed un-acked, eventually
+     * blocking the queue (with prefetchCount=1 the broker stops delivering).
+     */
+    it('unRegisterHandler also drops the queue from subscribedQueues so reconnect does NOT re-subscribe a dead handler', async () => {
+      vi.useFakeTimers()
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+      consumer.registerHandler('q1', vi.fn())
+      await consumer.consume('q1')
+
+      consumer.unRegisterHandler('q1')
+
+      const consumeCallsBeforeClose = channel.consume.mock.calls.length
+      connection.emitClose()
+      await vi.advanceTimersByTimeAsync(1000)
+
+      // Reconnect happened (channel.assertExchange called again) but channel.consume
+      // was NOT called for 'q1' because we dropped it from subscribedQueues.
+      const newConsumeCalls = channel.consume.mock.calls.slice(consumeCallsBeforeClose)
+      expect(newConsumeCalls.some(([name]) => name === 'q1')).toBe(false)
+    })
+  })
+
+  describe('disconnect()', () => {
+    /**
+     * Without the override, `subscribedQueues`, `handlers`, `retries` and
+     * `reconnectInProgress` would leak across a disconnect+initialize
+     * cycle and bite anyone reusing a consumer instance.
+     */
+    it('clears internal state (subscribedQueues, handlers, retries) so the consumer can be re-initialized cleanly', async () => {
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+      consumer.registerHandler('q1', vi.fn())
+      await consumer.consume('q1')
+      // @ts-expect-error — read private state for the assertion.
+      consumer.retries = 2
+
+      await consumer.disconnect()
+
+      // @ts-expect-error
+      expect(consumer.retries).toBe(0)
+      // @ts-expect-error
+      expect(consumer.subscribedQueues.size).toBe(0)
+      // @ts-expect-error
+      expect(consumer.handlers.size).toBe(0)
+      // @ts-expect-error
+      expect(consumer.reconnectInProgress).toBe(false)
     })
   })
 

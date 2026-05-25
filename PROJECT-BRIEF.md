@@ -22,7 +22,7 @@ The release is "trustworthy" when **all** are true:
 
 Sequenced view of what must land — and in roughly what order — for the acceptance criteria above to be met. Side tracks (skills, deployment recipes, additional capabilities) are deliberately **not** on this path.
 
-1. **Track 1 Phase 1 correctness PRs** (five remaining items, see "The plan" below). Approximate order — **Phase 1 items** `#3 → #4 → #2 → #5 → #6 → #7` (#1 resolved as delete in PR #12). Each remaining PR ships with a regression test: either flipping a Phase 0 characterisation lock (#2, #3, #5) or adding fresh coverage (#4, #6, #7).
+1. **Track 1 Phase 1 correctness PRs** (three remaining items, see "The plan" below). Approximate order — **Phase 1 items** `#5 → #6 → #7` (already shipped: #3 in PR #10, #1 resolved-delete in PR #12, #4 in PR #13, #2 in PR #14). Each remaining PR ships with a regression test: either flipping a Phase 0 characterisation lock or adding fresh coverage.
 2. **Track 2 Sprint C** — TypeDoc API reference, README badges. The public-API surface is now stable (Producer + Consumer), so Sprint C can land any time after Phase 1.
 3. **Track 3 release flow** — adopt changesets/release-please, tag-triggered publish, branch protection. The last gate before tagging.
 4. **Cut `v0.1`** on a green release pipeline.
@@ -102,7 +102,7 @@ well-bounded by the existing tests).
    *Acceptance:* `grep -r "console\." src/` returns nothing; `Logger` interface exported from `src/types.ts`; `RabbitMQConfig` accepts an optional `logger` field; URL credentials sanitized before any log; test verifies no password appears in captured log output and that a custom logger receives the calls.
 6. [ ] **Type tightening** — remove `any` from `types.ts`; add JSDoc to every public method.
    *Acceptance:* `grep -rn ": any" src/` returns nothing in the public surface; typedoc / tsc-derived signature has docstrings for `Producer.publish`, `Consumer.registerHandler`, `Consumer.consume`.
-7. [ ] **Consumer ack/nack idempotency** (surfaced via characterisation in PR #9). The current `consume()` callback at `src/consumer.ts:80–90` wraps the handler in `try/catch` and unconditionally `nack`s in the catch — so a handler that calls `ack()` and then throws causes BOTH `ack` and `nack` to fire on the same message, which `amqplib` rejects in production. Track the ack/nack state per delivery so only one terminal call is made.
+7. [ ] **Consumer ack/nack idempotency** (surfaced via characterisation in PR #9). The delivery callback now lives in `buildDeliveryCallback()` in `src/consumer.ts` (extracted in PR #14): it wraps the handler in `try/catch` and unconditionally `nack`s in the catch — so a handler that calls `ack()` and then throws causes BOTH `ack` and `nack` to fire on the same message, which `amqplib` rejects in production. Track the ack/nack state per delivery so only one terminal call is made.
    *Acceptance:* `tests/consumer.test.ts` characterisation "CURRENTLY calls both ack and nack when the handler ack()s and then throws" flips from asserting both calls to asserting only the explicit `ack`; a new test verifies that a handler which `nack()`s then throws also only nacks once.
 
 ## Track 2 — Onboarding & positioning

@@ -51,6 +51,10 @@ export class RabbitMQConsumer extends RabbitMQBase {
    * uncatchable for the caller and cause an unhandled-exception crash.
    * On exhaustion we log and give up; the process stays alive and the
    * caller can decide to recreate the consumer.
+   *
+   * `maxRetries: 0` disables reconnect entirely (the loop never enters);
+   * the log message in that case is "reconnect disabled" rather than
+   * "max retries exceeded".
    */
   private async handleReconnect(): Promise<void> {
     if (this.reconnectInProgress) return
@@ -74,6 +78,10 @@ export class RabbitMQConsumer extends RabbitMQBase {
             await this.channel.consume(queueName, this.buildDeliveryCallback(queueName))
           }
           console.log('[RabbitMQ::Consumer] reconnected and re-subscribed')
+          // Clear the guard BEFORE the implicit return so that a fresh
+          // 'close' arriving right after success can re-enter cleanly.
+          // (The `finally` below is then a harmless no-op double-clear.)
+          this.reconnectInProgress = false
           return
         } catch (error) {
           console.error(
@@ -84,9 +92,11 @@ export class RabbitMQConsumer extends RabbitMQBase {
         }
       }
 
-      console.error(
-        `[RabbitMQ::Consumer] max connection retries (${maxRetries}) exceeded; giving up. The consumer is no longer connected.`
-      )
+      if (maxRetries === 0) {
+        console.error('[RabbitMQ::Consumer] reconnect disabled (maxRetries=0); the consumer is no longer connected.')
+      } else {
+        console.error(`[RabbitMQ::Consumer] max connection retries (${maxRetries}) exceeded; giving up. The consumer is no longer connected.`)
+      }
     } finally {
       this.reconnectInProgress = false
     }
@@ -100,9 +110,11 @@ export class RabbitMQConsumer extends RabbitMQBase {
   }
 
   unRegisterHandler(queueName: string): void {
-    if (this.handlers.has(queueName)) {
-      this.handlers.delete(queueName)
-    }
+    this.handlers.delete(queueName)
+    // Also drop from subscribedQueues so a future reconnect doesn't
+    // re-subscribe a queue with no handler (which would silently leave
+    // its deliveries un-acked and, with prefetchCount=1, block the queue).
+    this.subscribedQueues.delete(queueName)
   }
 
   async consume(
@@ -110,6 +122,20 @@ export class RabbitMQConsumer extends RabbitMQBase {
   ): Promise<amqp.Replies.Consume> {
     this.subscribedQueues.add(queueName)
     return this.channel.consume(queueName, this.buildDeliveryCallback(queueName))
+  }
+
+  /**
+   * Close the channel and connection, and reset the consumer to a clean
+   * state so it can be safely re-`initialize()`d. Without this override
+   * the reconnect tracking (`subscribedQueues`, `reconnectInProgress`,
+   * `retries`) would leak across consumer lifecycles.
+   */
+  override async disconnect(): Promise<void> {
+    this.subscribedQueues.clear()
+    this.handlers.clear()
+    this.reconnectInProgress = false
+    this.retries = 0
+    await super.disconnect()
   }
 
   /**
