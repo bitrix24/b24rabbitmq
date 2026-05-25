@@ -1,5 +1,7 @@
 # @bitrix24/b24rabbitmq — Project Brief
 
+> _Last reviewed: 2026-05-25._
+
 > **Status**: reanimation, pre-v0.1. This document is the **single source of truth** for the plan. Issues, PR descriptions and `AGENTS.md` reference items here and add detail; they do not duplicate the plan.
 
 ## Goal
@@ -101,8 +103,7 @@ during characterisation; isolated and well-bounded by the existing tests).
    *Next:* decide between **(a) fix** (call `consumer.consume()` on the reply queue, surface AMQP properties to handlers — either as a second arg or by passing the wrapped message); or **(b) delete `src/rpc.ts`** and drop RPC from v0.1 scope.
 2. [ ] **Consumer reconnect safety** — `throw` inside `setTimeout` crashes the process; `this.connect()` is not awaited.
    *Acceptance:* bounded async backoff loop; handlers re-established after reconnect; vitest simulates connection drop and asserts recovery.
-3. [ ] **`base.ts registerQueue` — merge `x-max-priority` and dead-letter into one `arguments` object.** **Characterised** by `tests/base.test.ts` (the "LOSES dead-letter arguments…" test): when both `maxPriority` and `deadLetter` are set, the spread `{arguments: {dlx}, ...assertsOptions}` lets `assertsOptions.arguments` (carrying `x-max-priority`) overwrite the dead-letter arguments, so **dead-letter is dropped, not priority** — opposite of what the original `// @todo fix this` comment implies. A second related vector (`queue.options.arguments` from the caller also overwrites everything) is locked by a sibling test.
-   *Acceptance:* a queue declared with both `maxPriority` and `deadLetter` passes **both** `x-max-priority` and the `x-dead-letter-*` keys through to `channel.assertQueue.arguments`; caller-supplied `queue.options.arguments` are merged into the result rather than replacing it. The two characterisation tests flip from asserting the loss to asserting the merge. **Also update `examples/02-retry-dlq/rabbitmq.config.ts`** to use the typed `deadLetter` field (it currently uses raw `options.arguments` to dodge the bug).
+3. [x] **`base.ts registerQueue` — merge `x-max-priority` and dead-letter into one `arguments` object.** *(PR #10.)* Two compounding spread defects were characterised in PR #8/#9 and then flipped to assert the merge: `{arguments: {dlx}, ...assertsOptions}` had let the earlier `assertsOptions.arguments` overwrite dead-letter, and `{...assertsOptions, ...queue.options}` had let caller `options.arguments` wholesale-replace the merged result. PR #10 collapsed all three sources into one `mergedArguments` record, dropped the redundant top-level `maxPriority` field, and added a guard so `maxPriority: 0` no longer ships an invalid `x-max-priority: 0` to the broker. `examples/02-retry-dlq/rabbitmq.config.ts` migrated to the typed `deadLetter` field.
 4. [ ] **Producer hygiene** — remove `channel.prefetch` from the publish channel (meaningless there); decide on publisher confirms so `publish()`'s boolean return is trustworthy.
    *Acceptance:* `producer.connect()` does not call `prefetch`; `publish()` JSDoc documents return-value semantics.
 5. [ ] **Logger migration via DI** — replace stray `console.*` with calls to an injected `Logger` interface (`{ info, warn, error, debug }`); add a tiny default console adapter so the library still works out of the box.
@@ -140,9 +141,7 @@ during characterisation; isolated and well-bounded by the existing tests).
 Each item carries the same WHAT / WHY / ACCEPTANCE shape; addressed when the dependent Track 1 item lands or in the next docs PR.
 
 - [x] **`examples/01-uniform-distribution/consumer.ts` catch path** — `ack()` replaced by `nack()` with a comment explaining why.
-- [ ] **`examples/02-retry-dlq/rabbitmq.config.ts` — DLX via raw `options.arguments`** instead of the typed `queue.deadLetter` field.
-  *Why:* hides the library's abstraction and accidentally avoids the `x-max-priority` bug from Track 1 #3.
-  *Acceptance:* switch to `deadLetter: { exchange, routingKey }` **after** Track 1 #3 lands.
+- [x] **`examples/02-retry-dlq/rabbitmq.config.ts`** switched to the typed `deadLetter` field once Track 1 #3 landed. *(PR #10.)*
 - [ ] **`examples/*/package.json` missing** — `pnpm exec tsx` won't work without `pnpm init`.
   *Acceptance:* add a minimal `package.json` (`name`, `version`, `type: "module"`) to each example folder; rewrite README steps.
 - [ ] **`examples/02-retry-dlq/dlq-drain.ts` — full `msg` logged** (potential PII).

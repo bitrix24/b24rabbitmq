@@ -2,8 +2,9 @@
 
 Failed messages are routed automatically to a separate "failed" queue
 via RabbitMQ's `x-dead-letter-exchange` argument. The worker just
-`nack(requeue=false)` on failure; no manual republish from the handler
-is needed.
+calls `nack()` on failure (the library always sets `requeue=false`,
+which sends the message straight to the configured DLX); no manual
+republish from the handler is needed.
 
 This is the **minimal native-DLQ pattern**. For the more elaborate
 "balcony & garden" retry-with-delay topology, see

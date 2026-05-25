@@ -81,7 +81,33 @@ describe('RabbitMQBase', () => {
       expect(name).toBe('q')
       const args = opts['arguments'] as Record<string, unknown>
       expect(args['x-max-priority']).toBe(10)
-      expect(opts['maxPriority']).toBe(10)
+      // Top-level `maxPriority` is no longer passed: we set it via the
+      // arguments object so caller overrides in options.arguments can win.
+      expect(opts['maxPriority']).toBeUndefined()
+    })
+
+    it('omits x-max-priority when maxPriority is 0 (caller opts out of priority queue)', async () => {
+      base = new TestBase(baseConfig(), channel, connection)
+      await base.registerQueue({ name: 'q', maxPriority: 0, bindings: [] })
+
+      const opts = channel.assertQueue.mock.calls[0]?.[1] as Record<string, unknown>
+      // toStrictEqual locks the shape: arguments IS an object (not stripped
+      // to undefined by a future refactor) and contains exactly zero keys.
+      expect(opts['arguments']).toStrictEqual({})
+    })
+
+    it('defaults x-dead-letter-routing-key to empty string when routingKey is omitted', async () => {
+      base = new TestBase(baseConfig(), channel, connection)
+      await base.registerQueue({
+        name: 'q',
+        deadLetter: { exchange: 'dlx' },
+        bindings: []
+      })
+
+      const opts = channel.assertQueue.mock.calls[0]?.[1] as Record<string, unknown>
+      const args = opts['arguments'] as Record<string, unknown>
+      expect(args['x-dead-letter-exchange']).toBe('dlx')
+      expect(args['x-dead-letter-routing-key']).toBe('')
     })
 
     it('respects a custom maxPriority', async () => {
@@ -93,14 +119,13 @@ describe('RabbitMQBase', () => {
     })
 
     /**
-     * Characterisation of the documented defect (PROJECT-BRIEF Track 1 #3):
-     * the spread `{arguments: {dlx}, ...assertsOptions}` lets the previous
-     * `assertsOptions.arguments` (which holds x-max-priority) OVERWRITE the
-     * fresh dead-letter `arguments`. Net effect: when both maxPriority and
-     * deadLetter are set, the dead-letter arguments are LOST, not the
-     * priority. The Phase 1 fix must merge both into one arguments object.
+     * Regression test for Phase 1 #3: when both `maxPriority` and `deadLetter`
+     * are set, `channel.assertQueue` receives a single `arguments` object
+     * carrying x-max-priority AND the x-dead-letter-* keys. Previously the
+     * `{arguments: {dlx}, ...assertsOptions}` spread let the earlier
+     * `arguments` overwrite the dead-letter args.
      */
-    it('LOSES dead-letter arguments when maxPriority is also set (current behaviour)', async () => {
+    it('merges x-max-priority and dead-letter into a single arguments object', async () => {
       base = new TestBase(baseConfig(), channel, connection)
       await base.registerQueue({
         name: 'work',
@@ -111,20 +136,22 @@ describe('RabbitMQBase', () => {
 
       const opts = channel.assertQueue.mock.calls[0]?.[1] as Record<string, unknown>
       const args = opts['arguments'] as Record<string, unknown>
-      // The x-max-priority key wins the spread:
-      expect(args['x-max-priority']).toBe(5)
-      // …and the dead-letter keys are absent:
-      expect(args['x-dead-letter-exchange']).toBeUndefined()
-      expect(args['x-dead-letter-routing-key']).toBeUndefined()
+      // toStrictEqual: assert exactly these three keys — no surplus from a
+      // future over-merge regression.
+      expect(args).toStrictEqual({
+        'x-max-priority': 5,
+        'x-dead-letter-exchange': 'dlx',
+        'x-dead-letter-routing-key': 'failed'
+      })
     })
 
     /**
-     * Caller-supplied `queue.options` is spread LAST in `registerQueue`, so an
-     * `options.arguments` object will completely replace the priority / dead-
-     * letter arguments injected by the library. Locked here so the Phase 1
-     * merge fix consciously decides whether to keep this behaviour or merge.
+     * Regression test for Phase 1 #3 (second vector): caller-supplied
+     * `queue.options.arguments` is merged into the final arguments per-key
+     * rather than wholesale-replacing the library-injected x-max-priority /
+     * dead-letter keys. Caller keys win on conflict; sibling keys survive.
      */
-    it('lets `queue.options.arguments` overwrite library-injected `arguments` (current spread order)', async () => {
+    it('merges `queue.options.arguments` with library-injected arguments per-key', async () => {
       base = new TestBase(baseConfig(), channel, connection)
       await base.registerQueue({
         name: 'q',
@@ -136,8 +163,58 @@ describe('RabbitMQBase', () => {
       const opts = channel.assertQueue.mock.calls[0]?.[1] as Record<string, unknown>
       const args = opts['arguments'] as Record<string, unknown>
       expect(args['x-custom']).toBe('caller-wins')
-      // Library-injected x-max-priority is gone because options spread overrides it.
-      expect(args['x-max-priority']).toBeUndefined()
+      expect(args['x-max-priority']).toBe(7)
+    })
+
+    it('lets `queue.options.arguments` override a library-injected key on conflict', async () => {
+      base = new TestBase(baseConfig(), channel, connection)
+      await base.registerQueue({
+        name: 'q',
+        maxPriority: 3,
+        options: { arguments: { 'x-max-priority': 9 } },
+        bindings: []
+      })
+
+      const opts = channel.assertQueue.mock.calls[0]?.[1] as Record<string, unknown>
+      const args = opts['arguments'] as Record<string, unknown>
+      // Caller wins on conflict — explicit override.
+      expect(args['x-max-priority']).toBe(9)
+    })
+
+    /**
+     * Composite test: all four sources contribute to `arguments` in a single
+     * call. Sibling caller key survives; conflicting caller key overrides
+     * the library default; the library-injected dead-letter pair is intact.
+     * Catches `Object.assign` order regressions that pass the simpler tests
+     * but fail when all four interact.
+     *
+     * The caller-wins semantics for `x-max-priority` rely on `Object.assign`
+     * processing `callerArguments` AFTER the library populates its defaults —
+     * a future refactor that swaps that order must update this assertion.
+     */
+    it('merges library defaults, deadLetter and caller arguments simultaneously (override + sibling)', async () => {
+      base = new TestBase(baseConfig(), channel, connection)
+      await base.registerQueue({
+        name: 'q',
+        maxPriority: 3,
+        deadLetter: { exchange: 'dlx', routingKey: 'failed' },
+        options: {
+          arguments: {
+            'x-max-priority': 99,   // overrides the library default
+            'x-message-ttl': 6000   // sibling: must survive
+          }
+        },
+        bindings: []
+      })
+
+      const opts = channel.assertQueue.mock.calls[0]?.[1] as Record<string, unknown>
+      const args = opts['arguments'] as Record<string, unknown>
+      expect(args).toStrictEqual({
+        'x-max-priority': 99,
+        'x-dead-letter-exchange': 'dlx',
+        'x-dead-letter-routing-key': 'failed',
+        'x-message-ttl': 6000
+      })
     })
 
     it('binds the queue with a routing key when no headers are given', async () => {
@@ -148,6 +225,17 @@ describe('RabbitMQBase', () => {
       })
       expect(channel.bindQueue).toHaveBeenCalledWith('q', 'x', 'rk')
       expect(channel.bindQueue).toHaveBeenCalledTimes(1)
+    })
+
+    it('defaults the bind routing key to empty string when omitted (no headers)', async () => {
+      // Closes the `binding.routingKey || ''` branch in the no-headers else
+      // path of registerQueue's binding loop.
+      base = new TestBase(baseConfig(), channel, connection)
+      await base.registerQueue({
+        name: 'q',
+        bindings: [{ exchange: 'x' }]
+      })
+      expect(channel.bindQueue).toHaveBeenCalledWith('q', 'x', '')
     })
 
     it('binds with a headers argument when binding.headers is set', async () => {

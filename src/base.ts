@@ -50,35 +50,39 @@ export abstract class RabbitMQBase {
   async registerQueue(
     queue: QueueParams
   ): Promise<amqp.Replies.AssertQueue> {
-    let assertsOptions: amqp.Options.AssertQueue = {
-      maxPriority: queue.maxPriority ?? 10
-    }
+    const maxPriority = queue.maxPriority ?? 10
 
-    // @todo fix this
-    if (assertsOptions.maxPriority) {
-      assertsOptions = {
-        arguments: {
-          'x-max-priority': assertsOptions.maxPriority
-        },
-        ...assertsOptions
-      }
+    // Build a single `arguments` object so x-max-priority, dead-letter args
+    // and caller-supplied options.arguments all coexist. Earlier code spread
+    // them in three separate steps and accidentally let later spreads wipe
+    // the earlier ones; caller options.arguments now win per-key but do not
+    // replace sibling keys.
+    const mergedArguments: Record<string, unknown> = {}
+    // AMQP rejects x-max-priority outside 1..255; treat 0 / negative as
+    // "no priority queue" and omit the key so the broker accepts the assert.
+    if (maxPriority > 0) {
+      mergedArguments['x-max-priority'] = maxPriority
     }
-
     if (queue.deadLetter) {
-      assertsOptions = {
-        arguments: {
-          'x-dead-letter-exchange': queue.deadLetter.exchange,
-          'x-dead-letter-routing-key': queue.deadLetter.routingKey || ''
-        },
-        ...assertsOptions
-      }
+      mergedArguments['x-dead-letter-exchange'] = queue.deadLetter.exchange
+      mergedArguments['x-dead-letter-routing-key'] = queue.deadLetter.routingKey ?? ''
+    }
+    // Object.assign is a shallow copy — nested values share references with
+    // the caller's config. Safe here because we hand the result straight to
+    // assertQueue and never mutate after.
+    const { arguments: callerArguments, ...callerRestOptions } = queue.options ?? {}
+    if (callerArguments) {
+      Object.assign(mergedArguments, callerArguments)
     }
 
+    // We deliberately do NOT pass `maxPriority` as a top-level option:
+    // amqplib translates it to x-max-priority internally, which would
+    // silently shadow a caller's explicit override in options.arguments.
     const q = await this.channel.assertQueue(
       queue.name || '',
       {
-        ...assertsOptions,
-        ...queue.options
+        ...callerRestOptions,
+        arguments: mergedArguments
       }
     )
 

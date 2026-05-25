@@ -1,5 +1,7 @@
 # Testing
 
+> _Last reviewed: 2026-05-25._
+
 Tests run on [vitest](https://vitest.dev). The goal is fast, deterministic unit tests that never touch a real RabbitMQ broker.
 
 ## File location

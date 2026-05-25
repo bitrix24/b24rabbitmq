@@ -1,5 +1,7 @@
 # Skills for AI agents
 
+> _Last reviewed: 2026-05-25._
+
 This directory holds **agent-readable workflow recipes** — concrete, repeatable procedures that any AI assistant (Claude Code, Cursor, Copilot, others) can invoke to do the same thing the same way.
 
 Skills are agent-neutral by design (plain Markdown, no Claude-specific format). `.claude/skills/` may mirror individual entries when Claude Code's slash-command surface is useful, but **`skills/` here is the canonical source**.

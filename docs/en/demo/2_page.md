@@ -50,9 +50,9 @@ Bind it to 2 `exchanges`.
 
 * `name` = `demo2.events.subscriptions-service.v1`
 * `durable` = `true`
-* arguments
-	* `x-dead-letter-exchange` = `demo2.service.v1`
-	* `x-dead-letter-routing-key` = `failed`
+* `deadLetter`
+	* `exchange` = `demo2.service.v1`
+	* `routingKey` = `failed`
 * bind
 	* `exchange` = `demo2.events.v1`
 	* `routing_key` = `event.succeeded`
@@ -71,10 +71,11 @@ Bind to `exchange` with the key `delay.6000`.
 
 * `name` = `demo2.subscriptions-service.delayed.6000.v1`
 * `durable` = `true`
-* arguments
+* `deadLetter`
+	* `exchange` = `demo2.service.v1`
+	* `routingKey` = `events.service`
+* `options.arguments` *(no typed field for TTL — library merges these with the typed `deadLetter` keys above)*
 	* `x-message-ttl` = `6000`
-	* `x-dead-letter-exchange` = `demo2.service.v1`
-	* `x-dead-letter-routing-key` = `events.service`
 * bind
 	* `exchange` = `demo2.service.v1`
 	* `routing_key` = `delay.6000`
@@ -125,12 +126,10 @@ export const rabbitMQConfig: RabbitMQConfig = {
     // Main queue (room)
     {
       name: 'demo2.events.subscriptions-service.v1',
-      options: {
-        durable: true,
-        arguments: {
-          'x-dead-letter-exchange': 'demo2.service.v1',
-          'x-dead-letter-routing-key': 'failed'
-        }
+      options: { durable: true },
+      deadLetter: {
+        exchange: 'demo2.service.v1',
+        routingKey: 'failed'
       },
       bindings: [
         {
@@ -143,16 +142,17 @@ export const rabbitMQConfig: RabbitMQConfig = {
         }
       ]
     },
-    // Delayed queue (balcony)
+    // Delayed queue (balcony) — combines the typed `deadLetter` field with
+    // a raw `x-message-ttl` argument; the library merges them per-key.
     {
       name: 'demo2.subscriptions-service.delayed.6000.v1',
       options: {
         durable: true,
-        arguments: {
-          'x-message-ttl': 6000,
-          'x-dead-letter-exchange': 'demo2.service.v1',
-          'x-dead-letter-routing-key': 'events.service'
-        }
+        arguments: { 'x-message-ttl': 6000 }
+      },
+      deadLetter: {
+        exchange: 'demo2.service.v1',
+        routingKey: 'events.service'
       },
       bindings: [
         {
