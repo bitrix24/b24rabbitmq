@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+* **producer:** `channel.prefetch()` is no longer called inside `producer.connect()`. `prefetch` is a consumer-side flow-control setting; calling it on a publish channel was a no-op (plus one wasted broker round-trip per connect). New `connect()` carries a JSDoc note explaining this; `publish()` JSDoc now documents that its boolean return reflects only the client-side write buffer (back-pressure signal), not broker acknowledgment — see Track 4 for publisher confirms. The commented-out "exchange not registered" guard inside `publish()` is removed (lenient behaviour preserved; test pins it). (#13)
+
 ### Removed
 
 * **`RabbitRPC` dropped from v0.1 scope.** The class was already unexported from the public barrel (since PR #5) pending verification; the verification confirmed two compounding defects (reply queue never subscribed; AMQP `properties.correlationId` not surfaced to handlers). Fixing them required an architectural change to `MessageHandler` for a primitive that no consumer was using yet — not justified for v0.1. Removed: `src/rpc.ts`, `src/tools/uuidv7.ts` (its only user), and their tests. If request/reply is needed, build it on top of `Producer` + `Consumer` for now; a properties-aware RPC may return in v0.2.

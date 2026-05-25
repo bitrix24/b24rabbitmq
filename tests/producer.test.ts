@@ -31,12 +31,11 @@ describe('RabbitMQProducer', () => {
   })
 
   describe('initialize()', () => {
-    it('connects, creates a channel, sets prefetch, then declares the exchanges', async () => {
+    it('connects, creates a channel, then declares the exchanges', async () => {
       const producer = new RabbitMQProducer(config)
       await producer.initialize()
 
       expect(amqp.connect).toHaveBeenCalledWith('amqp://localhost')
-      expect(channel.prefetch).toHaveBeenCalledWith(1)
       expect(channel.assertExchange).toHaveBeenCalledWith(
         'events.v1',
         'direct',
@@ -45,14 +44,15 @@ describe('RabbitMQProducer', () => {
     })
 
     /**
-     * Characterisation of PROJECT-BRIEF Track 1 #4: prefetch is meaningful
-     * only for consumer channels. The producer currently still calls it.
-     * Locked here so the Phase 1 fix removes it intentionally.
+     * Regression test for PROJECT-BRIEF Phase 1 #4: `prefetch` is a
+     * consumer-side flow-control setting and has no effect on a publish
+     * channel. Calling it on the producer side was a no-op-with-extra-
+     * roundtrip; removed in PR #13.
      */
-    it('CURRENTLY calls channel.prefetch() on the publish channel (defect lock)', async () => {
+    it('does NOT call channel.prefetch() on the publish channel', async () => {
       const producer = new RabbitMQProducer(config)
       await producer.initialize()
-      expect(channel.prefetch).toHaveBeenCalled()
+      expect(channel.prefetch).not.toHaveBeenCalled()
     })
 
     it('rethrows the original error if amqp.connect fails', async () => {
