@@ -82,6 +82,7 @@ The canonical list lives in [`PROJECT-BRIEF.md`](PROJECT-BRIEF.md) under **Track
 - Docs/examples updated if behaviour changed; `CHANGELOG.md` touched for user-facing changes.
 - No new runtime dependency unless justified; `amqplib` stays a peer.
 - **For any removal or signature change to a public export** (pre-v0.1 has no SemVer commitment, but still): verify known downstream consumers — currently [`bitrix24/app-template-automation-rules`](https://github.com/bitrix24/app-template-automation-rules) — are unaffected; note the result in the PR description.
+- **Any new diagnostic in `src/` goes through `this.logger.X`**, not `console.*`. `grep -r "console\." src/` must return hits only inside `src/logger.ts` (the default adapter). Error messages from caught exceptions go through `safeErrorMessage` from `src/logger.ts` to scrub `amqp[s]://user:pass@host` credentials.
 
 ## Resources
 

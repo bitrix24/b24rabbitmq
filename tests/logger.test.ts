@@ -24,6 +24,17 @@ describe('logger', () => {
       const s = 'failed amqps://u:p@a.example.com and amqps://x:y@b.example.com'
       expect(sanitizeUrl(s)).toBe('failed amqps://***:***@a.example.com and amqps://***:***@b.example.com')
     })
+
+    it('scrubs username-only URLs (no password)', () => {
+      expect(sanitizeUrl('amqp://admin@host:5672')).toBe('amqp://***@host:5672')
+      expect(sanitizeUrl('amqps://admin@broker.example.com/vhost')).toBe('amqps://***@broker.example.com/vhost')
+    })
+
+    it('does not double-scrub an already-scrubbed URL', () => {
+      // After the with-password regex masks the user, the user-only regex
+      // must not match `***@` again. Belt-and-suspenders check.
+      expect(sanitizeUrl('amqp://u:p@host')).toBe('amqp://***:***@host')
+    })
   })
 
   describe('safeErrorMessage', () => {
@@ -51,7 +62,7 @@ describe('logger', () => {
   describe('defaultLogger', () => {
     it('routes info/warn/error/debug to the matching console methods', () => {
       const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined)
-      const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+      const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
       const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
@@ -61,7 +72,7 @@ describe('logger', () => {
       defaultLogger.error('e', 4)
 
       expect(debug).toHaveBeenCalledWith('d', 1)
-      expect(log).toHaveBeenCalledWith('i', 2)
+      expect(info).toHaveBeenCalledWith('i', 2)
       expect(warn).toHaveBeenCalledWith('w', 3)
       expect(error).toHaveBeenCalledWith('e', 4)
     })

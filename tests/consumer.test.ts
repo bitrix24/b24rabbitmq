@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import amqp from 'amqplib'
 import { RabbitMQConsumer } from '../src/consumer'
-import type { RabbitMQConfig } from '../src/types'
+import type { Logger, RabbitMQConfig } from '../src/types'
 import { makeFakeConnection, getConsumeCallback, type FakeChannel, type FakeConnection } from './_helpers/amqp-mock'
 
 vi.mock('amqplib', () => ({
@@ -331,7 +331,7 @@ describe('RabbitMQConsumer', () => {
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn()
-      }
+      } satisfies Logger
       const consumer = new RabbitMQConsumer({ ...config, logger })
       await consumer.initialize()
 
@@ -345,7 +345,7 @@ describe('RabbitMQConsumer', () => {
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn()
-      }
+      } satisfies Logger
       const consumer = new RabbitMQConsumer({ ...config, logger })
       await consumer.initialize()
 

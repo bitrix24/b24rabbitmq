@@ -54,8 +54,13 @@ export interface RabbitMQConfig {
    * (see `src/logger.ts: defaultLogger`). Pass `pino`, `consola`,
    * the `@bitrix24/b24jssdk` logger, or any object satisfying the
    * {@link Logger} interface to route diagnostics through your own
-   * stack. Credentials in connection URLs are scrubbed before they
-   * reach the logger.
+   * stack.
+   *
+   * Credentials in connection URLs are scrubbed by THIS LIBRARY
+   * before they reach the logger — but only for messages emitted by
+   * this library. If your logger implementation also receives errors
+   * from your own code paths (e.g. forwards to an error-reporter),
+   * sanitize URL credentials there too.
    */
   logger?: Logger
 }
