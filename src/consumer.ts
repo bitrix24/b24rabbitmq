@@ -11,6 +11,12 @@ export class RabbitMQConsumer extends RabbitMQBase {
   /** Guard so multiple 'close' events don't kick off concurrent reconnect loops. */
   private reconnectInProgress = false
 
+  /**
+   * Open the connection + consumer channel, assert every exchange and
+   * queue (with bindings) from the config, then arm the reconnect
+   * listener. Throws if the broker is unreachable or any assertion
+   * fails. Call once before {@link registerHandler} + {@link consume}.
+   */
   public async initialize(): Promise<void> {
     await this.connect()
     await this.setupExchanges()
@@ -103,13 +109,51 @@ export class RabbitMQConsumer extends RabbitMQBase {
     }
   }
 
+  /**
+   * Register an async handler for a queue. Storage only — no broker
+   * traffic happens here; the handler activates once {@link consume} is
+   * called for the same `queueName`. Registering twice for the same
+   * queue replaces the previous handler.
+   *
+   * The handler receives the JSON-parsed message body plus terminal
+   * `ack` / `nack` callbacks. `nack` always sends `requeue=false` so
+   * rejected messages route through any configured dead-letter
+   * exchange — to replay, publish a fresh copy.
+   *
+   * Parse errors (invalid JSON) and uncaught handler rejections are
+   * logged and `nack`'d by the library — the handler itself never sees
+   * a parse failure.
+   *
+   * @typeParam T the parsed message body shape. The library does not
+   *   validate at runtime; supply a narrow type and validate at the
+   *   call site if needed.
+   * @param queueName must match an asserted queue (see `RabbitMQConfig.queues`).
+   * @param handler async callback invoked for every delivery.
+   */
   registerHandler<T>(
     queueName: string,
     handler: MessageHandler<T>
   ): void {
-    this.handlers.set(queueName, handler)
+    // Storage erases T: the map holds `MessageHandler<unknown>` (after the
+    // `any → unknown` tightening of the type alias's default). The cast is
+    // the type-system escape hatch at the boundary — `buildDeliveryCallback`
+    // invokes the handler with a parsed payload the caller chose to type as T.
+    this.handlers.set(queueName, handler as MessageHandler)
   }
 
+  /**
+   * Remove a previously registered handler and drop the queue from
+   * the reconnect-resubscribe set. Does **not** issue an AMQP
+   * `basic.cancel` against the broker — the consumer tag stays open
+   * and deliveries arriving on the active channel will simply find
+   * no handler and be ignored (a future improvement may cancel
+   * explicitly; see `PROJECT-BRIEF.md`).
+   *
+   * Removing the queue from `subscribedQueues` is the important part:
+   * without it, a reconnect would re-subscribe a queue with no
+   * handler and (with `prefetchCount=1`) block the queue with
+   * un-acked deliveries.
+   */
   unRegisterHandler(queueName: string): void {
     this.handlers.delete(queueName)
     // Also drop from subscribedQueues so a future reconnect doesn't
@@ -118,6 +162,20 @@ export class RabbitMQConsumer extends RabbitMQBase {
     this.subscribedQueues.delete(queueName)
   }
 
+  /**
+   * Subscribe to a queue. Tracks the subscription so the reconnect
+   * loop can re-attach after a broker drop. Each delivery is
+   * JSON-parsed and forwarded to the handler registered via
+   * {@link registerHandler}; if no handler exists for the queue, the
+   * delivery is silently ignored (it stays un-acked until the channel
+   * closes — register your handler **before** calling `consume`).
+   *
+   * @param queueName name of an already-asserted queue. Server-named
+   *   queues (where the broker assigns the name in `initialize()`)
+   *   should be looked up via the `assertQueue` reply if you need to
+   *   pass the generated name back in.
+   * @returns the amqplib `Replies.Consume` (contains `consumerTag`).
+   */
   async consume(
     queueName: string
   ): Promise<amqp.Replies.Consume> {
