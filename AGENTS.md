@@ -1,5 +1,7 @@
 # AGENTS.md
 
+> _Last reviewed: 2026-05-25._
+
 Guidance for AI coding agents (Claude Code, Cursor, Copilot, etc.) working in this repository. Humans: see [`CONTRIBUTING.md`](CONTRIBUTING.md). The roadmap and known defects live in [`PROJECT-BRIEF.md`](PROJECT-BRIEF.md) — it is the source of truth; this file is the operational guide.
 
 > Load reference docs only when relevant — don't read everything up front. For testing details, open [`.github/contributing/testing.md`](.github/contributing/testing.md).
