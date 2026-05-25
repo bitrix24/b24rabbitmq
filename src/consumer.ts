@@ -1,5 +1,6 @@
 import amqp from 'amqplib'
 import { RabbitMQBase } from './base'
+import { safeErrorMessage } from './logger'
 import type { MessageHandler } from './types'
 
 export class RabbitMQConsumer extends RabbitMQBase {
@@ -22,7 +23,7 @@ export class RabbitMQConsumer extends RabbitMQBase {
    * (initialize or the reconnect loop) decides what to do with errors.
    */
   override async connect(): Promise<void> {
-    console.log('[RabbitMQ::Consumer] connect ...')
+    this.logger.info('[RabbitMQ::Consumer] connect ...')
 
     this.connection = await amqp.connect(this.config.connection.url)
     this.channel = await this.connection.createChannel()
@@ -35,10 +36,10 @@ export class RabbitMQConsumer extends RabbitMQBase {
     // 'error' typically precedes 'close' — we log here and let 'close' drive
     // the actual recovery so we don't double-trigger.
     this.connection.on('error', (error) => {
-      console.error('[RabbitMQ::Consumer] connection error', error instanceof Error ? error.message : error)
+      this.logger.error('[RabbitMQ::Consumer] connection error', safeErrorMessage(error))
     })
 
-    console.log('[RabbitMQ::Consumer] connected successfully')
+    this.logger.info('[RabbitMQ::Consumer] connected successfully')
     this.retries = 0
   }
 
@@ -66,7 +67,7 @@ export class RabbitMQConsumer extends RabbitMQBase {
     try {
       while (this.retries < maxRetries) {
         this.retries++
-        console.log(`[RabbitMQ::Consumer] reconnecting (attempt ${this.retries}/${maxRetries}) in ${interval}ms`)
+        this.logger.info(`[RabbitMQ::Consumer] reconnecting (attempt ${this.retries}/${maxRetries}) in ${interval}ms`)
 
         await new Promise<void>(resolve => setTimeout(resolve, interval))
 
@@ -77,25 +78,25 @@ export class RabbitMQConsumer extends RabbitMQBase {
           for (const queueName of this.subscribedQueues) {
             await this.channel.consume(queueName, this.buildDeliveryCallback(queueName))
           }
-          console.log('[RabbitMQ::Consumer] reconnected and re-subscribed')
+          this.logger.info('[RabbitMQ::Consumer] reconnected and re-subscribed')
           // Clear the guard BEFORE the implicit return so that a fresh
           // 'close' arriving right after success can re-enter cleanly.
           // (The `finally` below is then a harmless no-op double-clear.)
           this.reconnectInProgress = false
           return
         } catch (error) {
-          console.error(
+          this.logger.error(
             `[RabbitMQ::Consumer] reconnect attempt ${this.retries} failed:`,
-            error instanceof Error ? error.message : error
+            safeErrorMessage(error)
           )
           // fall through to the next iteration of the while-loop
         }
       }
 
       if (maxRetries === 0) {
-        console.error('[RabbitMQ::Consumer] reconnect disabled (maxRetries=0); the consumer is no longer connected.')
+        this.logger.error('[RabbitMQ::Consumer] reconnect disabled (maxRetries=0); the consumer is no longer connected.')
       } else {
-        console.error(`[RabbitMQ::Consumer] max connection retries (${maxRetries}) exceeded; giving up. The consumer is no longer connected.`)
+        this.logger.error(`[RabbitMQ::Consumer] max connection retries (${maxRetries}) exceeded; giving up. The consumer is no longer connected.`)
       }
     } finally {
       this.reconnectInProgress = false
@@ -156,7 +157,7 @@ export class RabbitMQConsumer extends RabbitMQBase {
             () => this.channel.nack(msg, false, false)
           )
         } catch (error) {
-          console.error(`[RabbitMQ] Error processing message: ${error instanceof Error ? error.message : error}`)
+          this.logger.error(`[RabbitMQ] Error processing message: ${safeErrorMessage(error)}`)
           this.channel.nack(msg, false, false)
         }
       }

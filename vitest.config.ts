@@ -9,15 +9,16 @@ export default defineConfig({
       reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.ts'],
       // Floor — set below current numbers to give a touch of headroom
-      // without letting coverage silently regress. Current (after RPC drop):
-      // 100 / 100 / 100 / 86.66 (statements / lines / functions / branches).
-      // Branches floor is 75 — 11.66pp headroom — to absorb the natural
-      // dip from new untested branches in upcoming Phase 1 PRs.
+      // without letting coverage silently regress. Current (after Logger
+      // DI): 100 / 100 / 100 / 100 (statements / lines / functions /
+      // branches — the missing producer non-Error branch was closed in
+      // PR #15). Floors at 85/85/90/90 leave room for upcoming Phase 1
+      // PRs to add untested branches temporarily.
       thresholds: {
-        statements: 80,
-        lines: 80,
-        functions: 85,
-        branches: 75
+        statements: 85,
+        lines: 85,
+        functions: 90,
+        branches: 90
       }
     }
   }

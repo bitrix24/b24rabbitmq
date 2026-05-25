@@ -49,7 +49,7 @@ Before opening a PR, all four gates must pass locally: `pnpm lint`, `pnpm typech
 - **Branch off `main`** — never commit to it directly. Prefixes: `fix/*`, `feat/*`, `chore/*`, `docs/*`, `claude/*`. One logical change per PR.
 - **ESM only.** No CommonJS. Use `import`/`export`, top-level `await` is fine in docs examples.
 - **Keep the dependency surface minimal.** Don't add runtime deps; `amqplib` stays a peer dependency.
-- **Logging is dependency-injected** via a `Logger` interface (planned in Phase 1 #5); a tiny console adapter is the default. Existing `console.*` calls in `src/` are a known defect being migrated.
+- **Logging is dependency-injected** via the `Logger` interface in `src/types.ts` (shape-compatible with `console`, `pino`, `consola`, `@bitrix24/b24jssdk`). Default is a thin `console.*` wrapper in `src/logger.ts`. `RabbitMQConfig.logger` accepts a custom logger. Every diagnostic in `src/` routes through `this.logger.X`; the only `console.*` calls live inside `src/logger.ts` as the default adapter. `sanitizeUrl` / `safeErrorMessage` (from `src/logger.ts`) scrub `amqp[s]://user:pass@host` credentials before any error message reaches the logger — use them whenever a caught error is logged.
 - **Public API = whatever `src/index.ts` re-exports.** Don't widen it casually. `RabbitRPC` was dropped from v0.1 scope — see `PROJECT-BRIEF.md` Phase 1 #1.
 - **Docs are English only** at v0.1; localization is frozen until a real integrator asks.
 
@@ -82,6 +82,7 @@ The canonical list lives in [`PROJECT-BRIEF.md`](PROJECT-BRIEF.md) under **Track
 - Docs/examples updated if behaviour changed; `CHANGELOG.md` touched for user-facing changes.
 - No new runtime dependency unless justified; `amqplib` stays a peer.
 - **For any removal or signature change to a public export** (pre-v0.1 has no SemVer commitment, but still): verify known downstream consumers — currently [`bitrix24/app-template-automation-rules`](https://github.com/bitrix24/app-template-automation-rules) — are unaffected; note the result in the PR description.
+- **Any new diagnostic in `src/` goes through `this.logger.X`**, not `console.*`. `grep -r "console\." src/` must return hits only inside `src/logger.ts` (the default adapter). Error messages from caught exceptions go through `safeErrorMessage` from `src/logger.ts` to scrub `amqp[s]://user:pass@host` credentials.
 
 ## Resources
 

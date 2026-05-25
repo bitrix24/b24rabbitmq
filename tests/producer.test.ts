@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import amqp from 'amqplib'
 import { RabbitMQProducer } from '../src/producer'
-import type { RabbitMQConfig } from '../src/types'
+import type { Logger, RabbitMQConfig } from '../src/types'
 import { makeFakeConnection, type FakeChannel } from './_helpers/amqp-mock'
 
 vi.mock('amqplib', () => ({
@@ -59,6 +59,52 @@ describe('RabbitMQProducer', () => {
       vi.mocked(amqp.connect).mockRejectedValueOnce(new Error('boom'))
       const producer = new RabbitMQProducer(config)
       await expect(producer.initialize()).rejects.toThrow('boom')
+    })
+
+    /**
+     * Covers the false branch of `error instanceof Error` in producer.ts:
+     * when amqp.connect rejects with a non-Error value, the producer
+     * wraps it in a new Error with the raw rejection as `.cause`. The
+     * wrapper's `.message` is what reaches the logger; `safeErrorMessage`
+     * does not walk `.cause` — by design (see `src/logger.ts` JSDoc).
+     * Net effect: credentials in the rejection value do NOT leak into the
+     * log, because the wrapper hides them in `.cause`.
+     */
+    it('wraps a non-Error rejection (URL credentials in cause stay out of logs)', async () => {
+      vi.mocked(amqp.connect).mockReset()
+      vi.mocked(amqp.connect).mockRejectedValueOnce('connect failed: amqps://alice:s3cret@host')
+      const logger = {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn()
+      } satisfies Logger
+      const producer = new RabbitMQProducer({ ...config, logger })
+
+      await expect(producer.initialize()).rejects.toThrow('[RabbitMQ::Producer] connected error')
+
+      // The wrapper's message is logged; the credentials in `.cause` are not.
+      const errorCalls = logger.error.mock.calls.flat().join(' ')
+      expect(errorCalls).toContain('[RabbitMQ::Producer] connected error')
+      expect(errorCalls).not.toContain('s3cret')
+      expect(errorCalls).not.toContain('alice')
+    })
+  })
+
+  describe('logger (DI)', () => {
+    it('routes producer.connect diagnostics through a custom logger', async () => {
+      const logger = {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn()
+      } satisfies Logger
+      const producer = new RabbitMQProducer({ ...config, logger })
+
+      await producer.initialize()
+
+      expect(logger.info).toHaveBeenCalledWith('[RabbitMQ::Producer] connect ...')
+      expect(logger.info).toHaveBeenCalledWith('[RabbitMQ::Producer] connected successfully')
     })
   })
 

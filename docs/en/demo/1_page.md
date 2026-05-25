@@ -8,8 +8,9 @@
 
 ## Example Implementation in TypeScript:
 
-> The snippets below use `console.*` for brevity; in real code wire a `Logger`
-> via config (see `RabbitMQConfig.logger` once Phase 1 #5 lands).
+> The snippets below use `console.*` in the example's own code for brevity.
+> To route the library's *internal* diagnostics through your own logger,
+> pass `logger: yourLogger` in `RabbitMQConfig` (see README).
 
 ```typescript
 // rabbitmq.config.ts

@@ -152,6 +152,20 @@ This library is for the **Node.js worker process that sits next to your Bitrix24
 
 For any non-local broker, use `amqps://user:pass@host/vhost` (TLS) and keep credentials in environment variables, **not** in `rabbitmq.config.ts`.
 
+**Logging.** Diagnostics default to `console.*`; pass `logger: yourLogger` in the config to route them through `pino`, `consola`, the `@bitrix24/b24jssdk` logger, or any object with `{ debug, info, warn, error }` methods. The library scrubs `amqp[s]://user:pass@host` credentials from error messages before they reach your logger.
+
+```ts
+import { LoggerBrowser } from '@bitrix24/b24jssdk'
+const logger = LoggerBrowser.build('rabbitmq', true)
+
+const config: RabbitMQConfig = {
+  connection: { url: process.env.RABBITMQ_URL! },
+  exchanges: [/* … */],
+  queues: [/* … */],
+  logger
+}
+```
+
 ## Runnable examples
 
 Clone the repo and look at [`examples/`](examples/) for end-to-end scripts you can `pnpm exec tsx` against a local RabbitMQ:
