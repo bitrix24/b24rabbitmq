@@ -4,6 +4,7 @@
 
 ### Changed
 
+* **consumer:** reconnect is now bounded and safe. The old `handleReconnect` synchronously threw on max-retries-exceeded — an uncatchable crash path from the `'close'` event listener — and fired `this.connect()` inside `setTimeout` without awaiting it. New behaviour: an awaitable async loop with a `reconnectInProgress` guard against concurrent reconnects; sleeps `reconnectInterval` between attempts; on success re-asserts the topology and re-subscribes every queue that had an active `consume()`; on exhaustion logs and returns instead of throwing. `connect()` no longer special-cases ENOTFOUND/ECONNREFUSED — all errors propagate; reconnect is driven solely by the `'close'` event. **Behavioural change** for callers who relied on the old synchronous throw to detect exhaustion: switch to observing the connection state or the logged error. (#14)
 * **producer:** `channel.prefetch()` is no longer called inside `producer.connect()`. `prefetch` is a consumer-side flow-control setting; calling it on a publish channel was a no-op (plus one wasted broker round-trip per connect). New `connect()` carries a JSDoc note explaining this; `publish()` JSDoc now documents that its boolean return reflects only the client-side write buffer (back-pressure signal), not broker acknowledgment — see Track 4 for publisher confirms. The commented-out "exchange not registered" guard inside `publish()` is removed (lenient behaviour preserved; test pins it). (#13)
 
 ### Removed
