@@ -49,6 +49,28 @@ export interface RabbitMQConfig {
     // Limit of unconfirmed messages (1)
     prefetchCount?: number
   }
+  /**
+   * Optional logger receiver. Defaults to a thin `console.*` wrapper
+   * (see `src/logger.ts: defaultLogger`). Pass `pino`, `consola`,
+   * the `@bitrix24/b24jssdk` logger, or any object satisfying the
+   * {@link Logger} interface to route diagnostics through your own
+   * stack. Credentials in connection URLs are scrubbed before they
+   * reach the logger.
+   */
+  logger?: Logger
+}
+
+/**
+ * Minimal logger interface the library calls into. Compatible by shape
+ * with `console`, `pino`, `consola`, and the `@bitrix24/b24jssdk`
+ * logger. All four levels are required so call sites stay simple;
+ * implementations that don't care about a level can supply a noop.
+ */
+export interface Logger {
+  debug(message: string, ...args: unknown[]): void
+  info(message: string, ...args: unknown[]): void
+  warn(message: string, ...args: unknown[]): void
+  error(message: string, ...args: unknown[]): void
 }
 
 export interface Message {

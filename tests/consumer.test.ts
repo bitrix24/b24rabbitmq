@@ -324,6 +324,44 @@ describe('RabbitMQConsumer', () => {
     })
   })
 
+  describe('logger (DI)', () => {
+    it('routes diagnostics through a custom logger supplied via config', async () => {
+      const logger = {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn()
+      }
+      const consumer = new RabbitMQConsumer({ ...config, logger })
+      await consumer.initialize()
+
+      expect(logger.info).toHaveBeenCalledWith('[RabbitMQ::Consumer] connect ...')
+      expect(logger.info).toHaveBeenCalledWith('[RabbitMQ::Consumer] connected successfully')
+    })
+
+    it('scrubs amqp:// credentials from logged error messages', async () => {
+      const logger = {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn()
+      }
+      const consumer = new RabbitMQConsumer({ ...config, logger })
+      await consumer.initialize()
+
+      // Trigger the 'error' listener with an error whose message embeds
+      // a credential-bearing URL — the kind amqplib can emit on TLS / auth
+      // failures.
+      connection.emitError(new Error('handshake failed for amqps://alice:secret-pass@broker.example.com'))
+
+      // The logger captured the call — but the password must NOT appear.
+      const captured = logger.error.mock.calls.flat().join(' ')
+      expect(captured).not.toContain('secret-pass')
+      expect(captured).not.toContain('alice')
+      expect(captured).toContain('amqps://***:***@broker.example.com')
+    })
+  })
+
   describe('consume()', () => {
     /**
      * Characterisation of the AMQP-properties surfacing gap (related to

@@ -49,7 +49,7 @@ Before opening a PR, all four gates must pass locally: `pnpm lint`, `pnpm typech
 - **Branch off `main`** — never commit to it directly. Prefixes: `fix/*`, `feat/*`, `chore/*`, `docs/*`, `claude/*`. One logical change per PR.
 - **ESM only.** No CommonJS. Use `import`/`export`, top-level `await` is fine in docs examples.
 - **Keep the dependency surface minimal.** Don't add runtime deps; `amqplib` stays a peer dependency.
-- **Logging is dependency-injected** via a `Logger` interface (planned in Phase 1 #5); a tiny console adapter is the default. Existing `console.*` calls in `src/` are a known defect being migrated.
+- **Logging is dependency-injected** via the `Logger` interface in `src/types.ts` (shape-compatible with `console`, `pino`, `consola`, `@bitrix24/b24jssdk`). Default is a thin `console.*` wrapper in `src/logger.ts`. `RabbitMQConfig.logger` accepts a custom logger. Every diagnostic in `src/` routes through `this.logger.X`; the only `console.*` calls live inside `src/logger.ts` as the default adapter. `sanitizeUrl` / `safeErrorMessage` (from `src/logger.ts`) scrub `amqp[s]://user:pass@host` credentials before any error message reaches the logger — use them whenever a caught error is logged.
 - **Public API = whatever `src/index.ts` re-exports.** Don't widen it casually. `RabbitRPC` was dropped from v0.1 scope — see `PROJECT-BRIEF.md` Phase 1 #1.
 - **Docs are English only** at v0.1; localization is frozen until a real integrator asks.
 

@@ -1,5 +1,6 @@
 import amqp from 'amqplib'
 import { RabbitMQBase } from './base'
+import { safeErrorMessage } from './logger'
 import type { ExchangeParams, MessageOptions } from './types'
 
 export class RabbitMQProducer extends RabbitMQBase {
@@ -19,15 +20,15 @@ export class RabbitMQProducer extends RabbitMQBase {
    */
   override async connect(): Promise<void> {
     try {
-      console.log('[RabbitMQ::Producer] connect ...')
+      this.logger.info('[RabbitMQ::Producer] connect ...')
 
       this.connection = await amqp.connect(this.config.connection.url)
       this.channel = await this.connection.createChannel()
-      console.log('[RabbitMQ::Producer] connected successfully')
+      this.logger.info('[RabbitMQ::Producer] connected successfully')
     } catch (error) {
       const problem = error instanceof Error ? error : new Error(`[RabbitMQ::Producer] connected error`, { cause: error })
 
-      console.error(problem)
+      this.logger.error('[RabbitMQ::Producer] connect failed:', safeErrorMessage(problem))
       throw problem
     }
   }

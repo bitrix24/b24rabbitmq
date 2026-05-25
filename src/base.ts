@@ -1,16 +1,19 @@
 import amqp from 'amqplib'
-import type { ExchangeParams, QueueParams, RabbitMQConfig } from './types'
+import { defaultLogger } from './logger'
+import type { ExchangeParams, Logger, QueueParams, RabbitMQConfig } from './types'
 
 export abstract class RabbitMQBase {
   protected connection!: amqp.ChannelModel
   protected channel!: amqp.Channel
   protected config: RabbitMQConfig
+  protected logger: Logger
 
   constructor(config: RabbitMQConfig) {
     this.config = {
       channel: { prefetchCount: 1 },
       ...config
     }
+    this.logger = config.logger ?? defaultLogger
   }
 
   async connect(): Promise<void> {
@@ -109,6 +112,6 @@ export abstract class RabbitMQBase {
   async disconnect(): Promise<void> {
     await this.channel?.close()
     await this.connection?.close()
-    console.log('[RabbitMQ::Base] disconnect')
+    this.logger.info('[RabbitMQ::Base] disconnect')
   }
 }

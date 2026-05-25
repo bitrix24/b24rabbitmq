@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+* **Logger DI.** `RabbitMQConfig.logger` (optional) accepts any object satisfying the new exported `Logger` interface (`{ debug, info, warn, error }`, all required, shape-compatible with `console`, `pino`, `consola`, and the `@bitrix24/b24jssdk` logger). Default is a thin `console.*` wrapper — out-of-the-box behaviour is unchanged. Every diagnostic in `src/base.ts`, `src/producer.ts`, `src/consumer.ts` routes through the injected logger; the only `console.*` calls left in `src/` live inside the new `src/logger.ts` as the default adapter. New `sanitizeUrl` / `safeErrorMessage` helpers (also in `src/logger.ts`) scrub `amqp[s]://user:pass@host` credentials before any error message reaches the logger — applied wherever a caught error is fed to the log. (#15)
+
 ### Changed
 
 * **consumer:** reconnect is now bounded and safe. The old `handleReconnect` synchronously threw on max-retries-exceeded — an uncatchable crash path from the `'close'` event listener — and fired `this.connect()` inside `setTimeout` without awaiting it. New behaviour: an awaitable async loop with a `reconnectInProgress` guard against concurrent reconnects; sleeps `reconnectInterval` between attempts (`maxRetries: 0` disables reconnect entirely with a distinct log message); on success re-asserts the topology and re-subscribes every queue that had an active `consume()`; on exhaustion logs and returns instead of throwing. `connect()` no longer special-cases ENOTFOUND/ECONNREFUSED — all errors propagate; reconnect is driven solely by the `'close'` event. `RabbitMQConsumer.disconnect()` now clears the reconnect-tracking state so an instance can be safely re-`initialize()`d; `unRegisterHandler()` also drops the queue from the re-subscribe set so a future reconnect doesn't restore a dead handler. **Behavioural change** for callers who relied on the old synchronous throw to detect exhaustion: there is no programmatic state-introspection API yet (planned for Track 4); for now, observe the `console.error` log lines `max connection retries (N) exceeded` and `reconnect disabled (maxRetries=0)`, or wrap `initialize()` in your own supervisor retry. (#14)
