@@ -33,9 +33,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "docs": "typedoc",
+    "docs:watch": "typedoc --watch"
   },
-  "dependencies": {},
   "devDependencies": {
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",
@@ -44,6 +45,7 @@
     "@vitest/coverage-v8": "^4.1.7",
     "eslint": "^9.39.4",
     "eslint-config-unjs": "^0.6.2",
+    "typedoc": "^0.28.19",
     "typescript": "^5.9.2",
     "unbuild": "^3.6.1",
     "vitest": "^4.1.7"

@@ -1,6 +1,9 @@
 import unjs from 'eslint-config-unjs'
 
 export default unjs({
+	// Generated TypeDoc output: HTML, bundled minified JS, assets — never source.
+	// `.gitignore` already excludes it from version control; this keeps lint clean.
+	ignores: ['docs/api/**'],
 	rules: {
     'unicorn/no-array-for-each': 'off',
     'unicorn/prefer-top-level-await': 'off',

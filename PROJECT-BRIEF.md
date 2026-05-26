@@ -22,8 +22,8 @@ The release is "trustworthy" when **all** are true:
 
 Sequenced view of what must land — and in roughly what order — for the acceptance criteria above to be met. Side tracks (skills, deployment recipes, additional capabilities) are deliberately **not** on this path.
 
-1. **Track 1 Phase 1 — DONE.** All 7 correctness items shipped: #3 in PR #10, #1 resolved-delete in PR #12, #4 in PR #13, #2 in PR #14, #5 in PR #15, #6 in PR #16, #7 in PR #17. Track 1 closed; Track 2 Sprint C is now the next gate.
-2. **Track 2 Sprint C** — TypeDoc API reference, README badges. The public-API surface is now stable (Producer + Consumer), so Sprint C can land any time after Phase 1.
+1. **Track 1 Phase 1 — DONE.** All 7 correctness items shipped: #3 in PR #10, #1 resolved-delete in PR #12, #4 in PR #13, #2 in PR #14, #5 in PR #15, #6 in PR #16, #7 in PR #17.
+2. **Track 2 Sprint C — DONE** *(PR #18)*. TypeDoc API reference auto-published to GitHub Pages on every push to `main`; README badges expanded (Docs + npm downloads). Track 3 (release flow) is now the only remaining gate before tagging v0.1.
 3. **Track 3 release flow** — adopt changesets/release-please, tag-triggered publish, branch protection. The last gate before tagging.
 4. **Cut `v0.1`** on a green release pipeline.
 
@@ -118,9 +118,8 @@ well-bounded by the existing tests).
 
 ### Sprint C — discoverability & API reference
 
-- [ ] **TypeDoc API reference** under `docs/api/`, generated in CI on push to `main`.
-  *Acceptance:* every public class / type has a generated page; link added to README Documentation section.
-- [ ] **npm "downloads/week" + coverage badges** in README — once coverage thresholds are meaningful (i.e. after characterization tests land).
+- [x] **TypeDoc API reference** *(PR #18)*. `typedoc` devDep + `typedoc.json` config + `pnpm docs` script generate `docs/api/` HTML from `src/index.ts`'s exported surface (every public class on `RabbitMQBase`/`RabbitMQProducer`/`RabbitMQConsumer` and every interface/type in `src/types.ts`). New `.github/workflows/docs.yml` builds on every push to `main` and deploys to GitHub Pages via the official `actions/deploy-pages` flow (no `gh-pages` branch). `treatWarningsAsErrors: true` in typedoc.json so broken `{@link}` references fail CI. ESLint config gains `ignores: ['docs/api/**']` so the generated HTML/JS doesn't get linted.
+- [x] **README badges expanded** *(PR #18)*. Added: Docs (links to `https://bitrix24.github.io/b24rabbitmq/`), npm downloads/month. Existing CI / npm version / license / node badges retained. The Documentation section now leads with the API reference link.
 
 ### Follow-up findings (consolidated from PR #5 multi-angle review)
 
