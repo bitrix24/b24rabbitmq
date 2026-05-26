@@ -175,6 +175,14 @@ export interface MessageOptions extends amqp.Options.Publish {
  * configured dead-letter exchange. To replay, publish a fresh copy
  * (see `examples/02-retry-dlq`).
  *
+ * First terminal call wins (per-delivery): once `ack()` or `nack()` has
+ * fired — or the library's safety-net `nack` has fired because the
+ * handler threw without calling either — any further `ack()` / `nack()`
+ * call from the same handler invocation is suppressed (logged at
+ * `warn`). This guards against the protocol-error path where a handler
+ * that called `ack()` and then threw would otherwise have both `ack`
+ * and `nack` go on the wire for the same delivery.
+ *
  * The library does NOT validate payloads at runtime; the `T = unknown`
  * default forces TypeScript callers to narrow before access, but
  * provides no JS-level guarantee. For untrusted payloads, validate the

@@ -231,19 +231,28 @@ export class RabbitMQConsumer extends RabbitMQBase {
       let terminated = false
       const ack = () => {
         if (terminated) {
-          this.logger.debug('[RabbitMQ::Consumer] ack suppressed — delivery already terminated')
+          // `warn`, not `debug` — `ack(); ack()` (or `ack(); nack()`) without
+          // a surrounding throw produces zero `error`-level output, so a
+          // silent suppression would mask the handler bug at default log
+          // levels. The rate is bounded by handler defects, not traffic.
+          this.logger.warn('[RabbitMQ::Consumer] ack suppressed — delivery already terminated')
           return
         }
-        terminated = true
+        // Call the broker FIRST, flip the flag on success only. If
+        // `channel.ack` throws synchronously (channel closed mid-handler),
+        // `terminated` stays false and the catch-safety-net below can
+        // still nack — otherwise the delivery would sit unacked until the
+        // reconnect re-asserts the channel.
         this.channel.ack(msg)
+        terminated = true
       }
       const nack = () => {
         if (terminated) {
-          this.logger.debug('[RabbitMQ::Consumer] nack suppressed — delivery already terminated')
+          this.logger.warn('[RabbitMQ::Consumer] nack suppressed — delivery already terminated')
           return
         }
-        terminated = true
         this.channel.nack(msg, false, false)
+        terminated = true
       }
 
       try {
@@ -253,10 +262,13 @@ export class RabbitMQConsumer extends RabbitMQBase {
         this.logger.error(`[RabbitMQ] Error processing message: ${safeErrorMessage(error)}`)
         // Safety-net: if the handler threw before reaching a terminal
         // call, nack the delivery. If a terminal call already fired,
-        // skip — the `terminated` guard makes this idempotent.
+        // skip — the `terminated` guard makes this idempotent. The
+        // call-broker-first ordering above guarantees a synchronous
+        // throw from `channel.ack/nack` leaves `terminated === false`,
+        // so this path still nacks for that broker-error case.
         if (!terminated) {
-          terminated = true
           this.channel.nack(msg, false, false)
+          terminated = true
         }
       }
     }

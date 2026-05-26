@@ -36,7 +36,7 @@
 
 **Producer**: `initialize()` → `connect()` (open connection + channel) → `setupExchanges()`. Then `publish(exchange, routingKey, message, options)` serialises the payload to JSON and publishes with a default `priority: 5`.
 
-**Consumer**: `initialize()` → `connect()` → `setupExchanges()` → `setupQueues()`. Register a per-queue async handler with `registerHandler(queue, handler)`, then `consume(queue)`. The handler receives `(parsedContent, ack, nack)`; on a thrown error the message is `nack`ed without requeue (dead-letter territory).
+**Consumer**: `initialize()` → `connect()` → `setupExchanges()` → `setupQueues()`. Register a per-queue async handler with `registerHandler(queue, handler)`, then `consume(queue)`. The handler receives `(parsedContent, ack, nack)`; on a thrown error the message is `nack`ed without requeue (dead-letter territory) — unless the handler already called `ack()` or `nack()`, in which case the safety-net `nack` is suppressed. First terminal call wins (per-delivery); subsequent calls log at `warn` and are no-ops.
 
 ## Build & distribution
 

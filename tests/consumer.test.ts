@@ -482,8 +482,14 @@ describe('RabbitMQConsumer', () => {
       expect(channel.ack).not.toHaveBeenCalled()
     })
 
-    it('ignores a second ack() call from the same handler invocation', async () => {
-      const consumer = new RabbitMQConsumer(config)
+    it('ignores a second ack() call from the same handler invocation and logs at warn', async () => {
+      const logger: Logger = {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn()
+      }
+      const consumer = new RabbitMQConsumer({ ...config, logger })
       await consumer.initialize()
       consumer.registerHandler('q1', async (_content, ack) => {
         ack()
@@ -495,6 +501,11 @@ describe('RabbitMQConsumer', () => {
       await callback(msg)
       expect(channel.ack).toHaveBeenCalledTimes(1)
       expect(channel.nack).not.toHaveBeenCalled()
+      // Suppressed-terminal diagnostic must reach the logger at `warn`
+      // (not `debug`) so the handler bug stays visible at default levels.
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('ack suppressed')
+      )
     })
 
     it('ignores nack() after ack() in the same handler invocation (first terminal call wins)', async () => {
