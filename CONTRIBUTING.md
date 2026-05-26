@@ -58,17 +58,6 @@ Open a PR back into `main`; CI must be green before merge.
 - One logical change per PR. Keep the public API minimal.
 - Update `CHANGELOG.md` and docs when behaviour changes.
 
-## Maintainer notes
-
-### One-time GitHub Pages setup
-
-The TypeDoc API reference deploys to `https://bitrix24.github.io/b24rabbitmq/` via `.github/workflows/docs.yml`. The first push to `main` after this workflow lands requires a one-time toggle by a repo admin:
-
-1. **Settings → Pages → Build and deployment → Source** = `GitHub Actions`.
-2. (Optional) **Settings → Environments → github-pages → Deployment branches** = `main` only.
-
-Without step 1 the `deploy` job in `docs.yml` fails with `Failed to create deployment (status: 404). Ensure GitHub Pages has been enabled.` The `build` job (and the PR-time `docs` gate in `ci.yml`) succeed regardless — they only generate, not deploy.
-
 ## Where to start
 
 See [`PROJECT-BRIEF.md`](PROJECT-BRIEF.md) for the roadmap and the list of known defects (Phase 1 correctness refactor), and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the runtime model.

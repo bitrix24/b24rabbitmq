@@ -1,7 +1,6 @@
 # @bitrix24/b24rabbitmq
 
 [![CI](https://github.com/bitrix24/b24rabbitmq/actions/workflows/ci.yml/badge.svg)](https://github.com/bitrix24/b24rabbitmq/actions/workflows/ci.yml)
-[![Docs](https://github.com/bitrix24/b24rabbitmq/actions/workflows/docs.yml/badge.svg)](https://bitrix24.github.io/b24rabbitmq/)
 [![npm version](https://img.shields.io/npm/v/@bitrix24/b24rabbitmq.svg)](https://www.npmjs.com/package/@bitrix24/b24rabbitmq)
 [![npm downloads](https://img.shields.io/npm/dm/@bitrix24/b24rabbitmq.svg)](https://www.npmjs.com/package/@bitrix24/b24rabbitmq)
 [![license](https://img.shields.io/npm/l/@bitrix24/b24rabbitmq.svg)](LICENSE)
@@ -177,7 +176,8 @@ Clone the repo and look at [`examples/`](https://github.com/bitrix24/b24rabbitmq
 
 ## Documentation
 
-* **[API reference](https://bitrix24.github.io/b24rabbitmq/)** — generated from JSDoc on every push to `main`.
+The library is typed end-to-end with TypeScript and every public symbol carries a JSDoc block — TypeScript users get the full API reference in their IDE (hover, signature help) without any external site. To browse the API reference locally as static HTML, run `pnpm docs:build` and open `docs/api/index.html`.
+
 * [Project brief & roadmap](PROJECT-BRIEF.md)
 * [Architecture](docs/ARCHITECTURE.md)
 * [Contributing](CONTRIBUTING.md)
