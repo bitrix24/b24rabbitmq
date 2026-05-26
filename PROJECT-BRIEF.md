@@ -23,8 +23,8 @@ The release is "trustworthy" when **all** are true:
 Sequenced view of what must land — and in roughly what order — for the acceptance criteria above to be met. Side tracks (skills, deployment recipes, additional capabilities) are deliberately **not** on this path.
 
 1. **Track 1 Phase 1 — DONE.** All 7 correctness items shipped: #3 in PR #10, #1 resolved-delete in PR #12, #4 in PR #13, #2 in PR #14, #5 in PR #15, #6 in PR #16, #7 in PR #17.
-2. **Track 2 Sprint C — DONE** *(PR #18)*. TypeDoc API reference auto-published to GitHub Pages on every push to `main`; README badges expanded (Docs + npm downloads). Track 3 (release flow) is now the only remaining gate before tagging v0.1.
-3. **Track 3 release flow** — adopt changesets/release-please, tag-triggered publish, branch protection. The last gate before tagging.
+2. **Track 2 Sprint C — DONE** *(PR #18)*. TypeDoc API reference generated locally + PR-time JSDoc gate in CI (broken `{@link}` fails before merge); npm downloads badge added. No public hosting wired — IDE hover serves TS users via the `.d.mts` declarations.
+3. **Track 3 release flow — DONE** *(PR #19)*. release-please opens / maintains a release PR on every push to `main`; merging it creates the tag + GitHub Release, which triggers `npm-publish.yml` (now release-event-driven, with provenance, tag-vs-package.json sanity check, and the docs:build gate mirrored from PR CI). Branch protection on `main` documented in CONTRIBUTING.md as a one-time admin toggle. **Next: merge the release-please PR that opens after this lands → tag v0.1.**
 4. **Cut `v0.1`** on a green release pipeline.
 
 Solo-maintainer + AI-assistant pace: roughly 6–8 sequential PRs from current `main` to the tag.
@@ -141,10 +141,9 @@ Open as a working board in [issue #2](https://github.com/bitrix24/b24rabbitmq/is
 
 - [x] **npm provenance** — `--provenance` + `id-token: write`. *(PR #4)*
 - [x] **`tsconfig` cleanup** — frontend leftovers dropped. *(PR #4)*
-- [ ] **Gated release flow** — adopt changesets / release-please (or assert `v*` tag matches `package.json` version); replace manual `workflow_dispatch` with tag-triggered publish.
-  *Acceptance:* a wrong-tag publish attempt fails CI; `CHANGELOG.md` is generated, not hand-edited.
+- [x] **Gated release flow** *(PR #19)*. release-please wired via `.github/workflows/release-please.yml` + `.github/release-please-config.json` + `.release-please-manifest.json`. On every push to `main` it maintains a single "release-please" PR with the next version bump (computed from Conventional Commits since the previous tag — which we've enforced via commitlint since Phase 0) plus the relevant `## [x.y.z]` CHANGELOG additions. Merging the release PR creates the git tag + GitHub Release. `.github/workflows/npm-publish.yml` now triggers on `release: types: [published]` (with `workflow_dispatch` retained as a manual fallback) and adds a tag-vs-`package.json` version sanity check that fails publish if they disagree. The publish workflow now also runs the `docs:build` dry-run before shipping. Branch protection on `main` is documented in `CONTRIBUTING.md` "Release flow → One-time maintainer setup" as the matching admin-only setting.
 - [ ] **CI coverage upload** — Codecov or lcov artifact so PR-level coverage is visible.
-- [ ] **Branch protection on `main`** — required status checks before merge (repo setting, not a file).
+- [ ] **Branch protection on `main`** — required status checks before merge (repo admin setting, not a file). Documented in `CONTRIBUTING.md` "Release flow → One-time maintainer setup"; waiting on a repo admin to apply.
 - [ ] **`.github/CODEOWNERS`**.
 - [ ] **Issue Forms** — migrate `.github/ISSUE_TEMPLATE/*.md` to YAML forms with required fields.
 - [ ] **renovate `rangeStrategy`** reconsidered — `bump` vs `update-lockfile` for a published library.

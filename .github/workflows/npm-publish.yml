@@ -1,20 +1,38 @@
 name: NPM publish 🚀
 
+# Triggered by a GitHub Release being published — which release-please
+# creates automatically when its "release PR" is merged. `workflow_dispatch`
+# is kept as a fallback for manual republish (e.g. failed previous run, or
+# a hotfix outside the release-please flow).
 on:
+  release:
+    types: [published]
   workflow_dispatch:
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
 
 jobs:
   process:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       id-token: write
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v4
+        with:
+          # Needed so `git describe --tags --exact-match HEAD` can see tags
+          # on the workflow_dispatch fallback path. The release-triggered
+          # path doesn't need history, but it's cheap and uniform.
+          fetch-depth: 0
 
       - name: 'Install pnpm'
         uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
       - name: 'Install node'
         uses: actions/setup-node@v4
@@ -25,6 +43,37 @@ jobs:
 
       - name: 'Install dependencies'
         run: pnpm install --frozen-lockfile
+
+      - name: 'Sanity check — tag matches package.json version'
+        # Cheap insurance against a manually-pushed tag that disagrees with
+        # package.json (release-please keeps them in sync; a workflow_dispatch
+        # from a feature branch could drift). Runs on BOTH triggers: the
+        # release event sets GITHUB_REF to `refs/tags/vX.Y.Z`, and for
+        # workflow_dispatch we ask git for the exact-match tag on HEAD; if
+        # HEAD is not tagged, fail loudly so a manual dispatch can't ship
+        # an unidentified build.
+        shell: bash
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          if [ "${GITHUB_EVENT_NAME}" = "release" ]; then
+            RAW="${GITHUB_REF#refs/tags/}"
+            TAG="${RAW#v}"
+            SOURCE="release event"
+          else
+            # workflow_dispatch — derive tag from the commit HEAD points at.
+            RAW=$(git describe --tags --exact-match HEAD 2>/dev/null || true)
+            if [ -z "$RAW" ]; then
+              echo "::error::workflow_dispatch publish requires HEAD to be on a tag (none found). Push tag v$PKG or use the release event."
+              exit 1
+            fi
+            TAG="${RAW#v}"
+            SOURCE="workflow_dispatch on tag $RAW"
+          fi
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Tag $TAG (from $SOURCE) does not match package.json version $PKG"
+            exit 1
+          fi
+          echo "Publishing v$PKG (verified via $SOURCE)"
 
       - name: Lint
         run: pnpm run lint
@@ -39,6 +88,11 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Docs (TypeDoc dry-run)
+        # Mirror the PR-time gate from ci.yml: a release path should not ship
+        # to npm if the JSDoc surface that just landed has a broken {@link}.
+        run: pnpm run docs:build
 
       - name: 'Publish 🚀'
         shell: bash

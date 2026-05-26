@@ -1,0 +1,30 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Maintain release PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Maintains an open "release-please" PR with the next version bump
+      # (from Conventional Commits since the last tag) + CHANGELOG additions
+      # under `## [x.y.z]` headers. Merging that PR creates the git tag and
+      # GitHub Release, which then triggers `.github/workflows/npm-publish.yml`
+      # via the `release: types: [published]` event.
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: .github/release-please-config.json
+          manifest-file: .release-please-manifest.json
