@@ -23,6 +23,11 @@ jobs:
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v4
+        with:
+          # Needed so `git describe --tags --exact-match HEAD` can see tags
+          # on the workflow_dispatch fallback path. The release-triggered
+          # path doesn't need history, but it's cheap and uniform.
+          fetch-depth: 0
 
       - name: 'Install pnpm'
         uses: pnpm/action-setup@v4
@@ -42,17 +47,33 @@ jobs:
       - name: 'Sanity check — tag matches package.json version'
         # Cheap insurance against a manually-pushed tag that disagrees with
         # package.json (release-please keeps them in sync; a workflow_dispatch
-        # from a feature branch could drift).
-        if: github.event_name == 'release'
+        # from a feature branch could drift). Runs on BOTH triggers: the
+        # release event sets GITHUB_REF to `refs/tags/vX.Y.Z`, and for
+        # workflow_dispatch we ask git for the exact-match tag on HEAD; if
+        # HEAD is not tagged, fail loudly so a manual dispatch can't ship
+        # an unidentified build.
         shell: bash
         run: |
-          TAG="${GITHUB_REF#refs/tags/v}"
           PKG=$(node -p "require('./package.json').version")
+          if [ "${GITHUB_EVENT_NAME}" = "release" ]; then
+            RAW="${GITHUB_REF#refs/tags/}"
+            TAG="${RAW#v}"
+            SOURCE="release event"
+          else
+            # workflow_dispatch — derive tag from the commit HEAD points at.
+            RAW=$(git describe --tags --exact-match HEAD 2>/dev/null || true)
+            if [ -z "$RAW" ]; then
+              echo "::error::workflow_dispatch publish requires HEAD to be on a tag (none found). Push tag v$PKG or use the release event."
+              exit 1
+            fi
+            TAG="${RAW#v}"
+            SOURCE="workflow_dispatch on tag $RAW"
+          fi
           if [ "$TAG" != "$PKG" ]; then
-            echo "::error::Git tag v$TAG does not match package.json version $PKG"
+            echo "::error::Tag $TAG (from $SOURCE) does not match package.json version $PKG"
             exit 1
           fi
-          echo "Publishing v$PKG"
+          echo "Publishing v$PKG (verified via $SOURCE)"
 
       - name: Lint
         run: pnpm run lint
