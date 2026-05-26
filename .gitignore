@@ -22,3 +22,6 @@ logs
 !.env.dev.example
 !.env.prod.example
 /docs/ru/*
+
+# Generated TypeDoc output
+docs/api

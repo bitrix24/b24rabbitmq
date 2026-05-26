@@ -1,0 +1,26 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "out": "docs/api",
+  "tsconfig": "tsconfig.json",
+  "name": "@bitrix24/b24rabbitmq",
+  "includeVersion": true,
+  "readme": "none",
+  "githubPages": false,
+  "navigationLinks": {
+    "GitHub": "https://github.com/bitrix24/b24rabbitmq",
+    "npm": "https://www.npmjs.com/package/@bitrix24/b24rabbitmq"
+  },
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "skipErrorChecking": false,
+  "treatWarningsAsErrors": true,
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": false
+  },
+  "sort": ["source-order"]
+}

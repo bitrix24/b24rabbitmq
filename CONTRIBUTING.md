@@ -24,8 +24,10 @@ pnpm install
 | `pnpm test:watch` | Vitest in watch mode |
 | `pnpm test:coverage` | Vitest with a v8 coverage report |
 | `pnpm build` | Build ESM bundle + types via unbuild |
+| `pnpm docs:build` | Generate the TypeDoc API reference into `docs/api/` (dry-run also gates each PR). **Not `pnpm docs`** — that's a pnpm built-in command that opens the package's homepage URL. |
+| `pnpm docs:watch` | TypeDoc in watch mode for local docs iteration |
 
-All of `lint`, `typecheck`, `test`, `build` run in CI on every PR. Run them locally before pushing.
+All of `lint`, `typecheck`, `test`, `build`, `docs:build` run in CI on every PR. Run them locally before pushing.
 
 > Using an AI coding assistant? Operational rules for agents live in [`AGENTS.md`](AGENTS.md).
 

@@ -40,8 +40,10 @@ deployment/       # deployment recipes for worker services that use this library
 | `pnpm test:watch` | Vitest in watch mode |
 | `pnpm test:coverage` | Vitest with v8 coverage report |
 | `pnpm build` | Build ESM bundle + `.d.mts` via unbuild |
+| `pnpm docs:build` | Generate TypeDoc API reference into `docs/api/` (also runs in CI → GitHub Pages). **Not `pnpm docs`** — that collides with pnpm's built-in homepage opener. |
+| `pnpm docs:watch` | TypeDoc in watch mode for local docs iteration |
 
-Before opening a PR, all four gates must pass locally: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`. CI runs them on every PR (tests on Node 20 **and** 22).
+Before opening a PR, all five gates must pass locally: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm docs:build`. CI runs them on every PR (tests on Node 20 **and** 22; `pnpm docs:build` is a TypeDoc dry-run that catches broken `{@link}` references and missing entry points before they flip the Docs badge red on `main`).
 
 ## Key conventions
 
