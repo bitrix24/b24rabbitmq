@@ -1,6 +1,6 @@
 # Architecture
 
-> _Last reviewed: 2026-05-25._
+> _Last reviewed: 2026-05-26._
 
 `@bitrix24/b24rabbitmq` is a thin, config-driven layer over [`amqplib`](https://github.com/amqp-node/amqplib). One `RabbitMQConfig` object describes the topology (connection, exchanges, queues, bindings); the `Producer` and `Consumer` classes turn that config into live AMQP resources.
 

@@ -1,6 +1,6 @@
 # @bitrix24/b24rabbitmq — Project Brief
 
-> _Last reviewed: 2026-05-25._
+> _Last reviewed: 2026-05-26._
 
 > **Status**: reanimation, pre-v0.1. This document is the **single source of truth** for the plan. Issues, PR descriptions and `AGENTS.md` reference items here and add detail; they do not duplicate the plan.
 
