@@ -34,7 +34,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "docs": "typedoc",
+    "docs:build": "typedoc",
     "docs:watch": "typedoc --watch"
   },
   "devDependencies": {

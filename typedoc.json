@@ -5,14 +5,14 @@
   "tsconfig": "tsconfig.json",
   "name": "@bitrix24/b24rabbitmq",
   "includeVersion": true,
-  "readme": "README.md",
+  "readme": "none",
   "githubPages": false,
   "navigationLinks": {
     "GitHub": "https://github.com/bitrix24/b24rabbitmq",
     "npm": "https://www.npmjs.com/package/@bitrix24/b24rabbitmq"
   },
   "excludePrivate": true,
-  "excludeProtected": false,
+  "excludeProtected": true,
   "excludeInternal": true,
   "excludeExternals": true,
   "skipErrorChecking": false,

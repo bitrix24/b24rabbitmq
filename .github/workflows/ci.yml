@@ -90,3 +90,20 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+
+  docs:
+    name: Docs (TypeDoc dry-run)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Build-only — the Pages deploy lives in docs.yml and runs post-merge.
+      # This job exists so a broken {@link}, missing entry point, or other
+      # TypeDoc warning fails the PR BEFORE merge instead of flipping the
+      # Docs badge red on `main`. `treatWarningsAsErrors: true` in typedoc.json.
+      - run: pnpm run docs:build
