@@ -13,6 +13,10 @@ export default unjs({
 		'unicorn/no-null': 'off',
 		'no-null': 'off',
 		'unicorn/no-useless-promise-resolve-reject': 'off',
+		// Phase 1 #6 (PR #16) lock — keep `any` out of the public surface;
+		// `unknown` everywhere with narrowing at the call site. If a single
+		// `any` is genuinely needed, justify it with an inline eslint-disable.
+		'@typescript-eslint/no-explicit-any': 'error',
 		'unicorn/numeric-separators-style': [
 			'error',
 			{

@@ -16,12 +16,19 @@ export abstract class RabbitMQBase {
     this.logger = config.logger ?? defaultLogger
   }
 
+  /**
+   * Open the AMQP connection and channel. Not a TypeScript `abstract`
+   * method — the base implementation throws unless a subclass overrides
+   * it; `RabbitMQProducer` and `RabbitMQConsumer` do exactly that
+   * (publish channel vs consumer channel + reconnect listener).
+   */
   async connect(): Promise<void> {
     throw new Error('Need override this function')
   }
 
   /**
-   * Initialize all exchanges from the config
+   * Iterate the config's `exchanges` array and assert each one against
+   * the broker. Called by `initialize()`; idempotent on the broker side.
    * @protected
    */
   protected async setupExchanges(): Promise<void> {
@@ -30,6 +37,12 @@ export abstract class RabbitMQBase {
     }
   }
 
+  /**
+   * Declare a single exchange on the active channel. `Producer` overrides
+   * this to also cache the exchange in a local map.
+   *
+   * @param exchange the exchange to assert — see {@link ExchangeParams}.
+   */
   async registerExchange(
     exchange: ExchangeParams
   ): Promise<void> {
@@ -41,7 +54,8 @@ export abstract class RabbitMQBase {
   }
 
   /**
-   * Initialize queues from config
+   * Iterate the config's `queues` array, assert each queue and create
+   * its bindings. Called by `Consumer.initialize()`.
    * @protected
    */
   protected async setupQueues(): Promise<void> {
@@ -50,6 +64,22 @@ export abstract class RabbitMQBase {
     }
   }
 
+  /**
+   * Declare a single queue (and its bindings) on the active channel.
+   *
+   * The library merges three sources into the queue's `arguments`:
+   * (1) library-injected `x-max-priority` (from `queue.maxPriority`,
+   * default 10; omitted when set to 0),
+   * (2) library-injected `x-dead-letter-exchange` / `x-dead-letter-routing-key`
+   * (from `queue.deadLetter`),
+   * (3) caller-supplied `queue.options.arguments`.
+   *
+   * On per-key conflict, the caller wins; sibling keys survive.
+   *
+   * @param queue the queue to assert — see {@link QueueParams}.
+   * @returns the amqplib assertQueue reply (with the broker-assigned
+   *   queue name if `queue.name` was empty).
+   */
   async registerQueue(
     queue: QueueParams
   ): Promise<amqp.Replies.AssertQueue> {
@@ -109,6 +139,12 @@ export abstract class RabbitMQBase {
     return q
   }
 
+  /**
+   * Close the channel and the connection. Safe to call repeatedly or
+   * before `initialize()` (the optional-chaining handles a missing
+   * channel/connection). `RabbitMQConsumer` overrides this to also
+   * clear its reconnect-tracking state.
+   */
   async disconnect(): Promise<void> {
     await this.channel?.close()
     await this.connection?.close()

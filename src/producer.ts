@@ -6,6 +6,11 @@ import type { ExchangeParams, MessageOptions } from './types'
 export class RabbitMQProducer extends RabbitMQBase {
   private exchanges = new Map<string, ExchangeParams>()
 
+  /**
+   * Open the connection + publish channel and assert every exchange
+   * from the config. Throws if the broker is unreachable or the
+   * topology assertion fails. Call once before {@link publish}.
+   */
   public async initialize(): Promise<void> {
     await this.connect()
     await this.setupExchanges()
@@ -33,6 +38,11 @@ export class RabbitMQProducer extends RabbitMQBase {
     }
   }
 
+  /**
+   * Assert an exchange on the broker (delegates to `RabbitMQBase`) and
+   * remember it in the Producer's local map. The cached entries are
+   * informational — `publish()` does not re-assert before sending.
+   */
   override async registerExchange(
     exchange: ExchangeParams
   ): Promise<void> {

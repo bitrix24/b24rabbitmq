@@ -1,6 +1,6 @@
 # Skills for AI agents
 
-> _Last reviewed: 2026-05-25._
+> _Last reviewed: 2026-05-26._
 
 This directory holds **agent-readable workflow recipes** — concrete, repeatable procedures that any AI assistant (Claude Code, Cursor, Copilot, others) can invoke to do the same thing the same way.
 
