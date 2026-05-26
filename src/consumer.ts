@@ -206,23 +206,69 @@ export class RabbitMQConsumer extends RabbitMQBase {
   /**
    * Build the delivery callback for a queue. Extracted so the reconnect path
    * can use the same logic without duplicating the closure inline.
+   *
+   * Each invocation owns a per-delivery `terminated` flag that guards
+   * `channel.ack` / `channel.nack` so only the FIRST terminal call wins:
+   *
+   * - `ack()` then `throw` → only `ack` fires; the catch's safety-net
+   *   `nack` is suppressed. amqplib treats a second terminal call on the
+   *   same delivery as a protocol error (channel close in production).
+   * - `nack()` then `throw` → only `nack` fires.
+   * - `ack(); ack()` → only the first ack fires.
+   * - Handler throws without calling `ack`/`nack` → the catch nacks once.
+   *
+   * Idempotency is per-delivery: a separate `terminated` lives in each
+   * outer-`return async (msg) => …` invocation, so two messages each get
+   * their own first-call-wins guard.
    */
   private buildDeliveryCallback(queueName: string): (msg: amqp.ConsumeMessage | null) => Promise<void> {
     return async (msg) => {
       if (!msg) return
 
       const handler = this.handlers.get(queueName)
-      if (handler) {
-        try {
-          const content = JSON.parse(msg.content.toString())
-          await handler(
-            content,
-            () => this.channel.ack(msg),
-            () => this.channel.nack(msg, false, false)
-          )
-        } catch (error) {
-          this.logger.error(`[RabbitMQ] Error processing message: ${safeErrorMessage(error)}`)
+      if (!handler) return
+
+      let terminated = false
+      const ack = () => {
+        if (terminated) {
+          // `warn`, not `debug` — `ack(); ack()` (or `ack(); nack()`) without
+          // a surrounding throw produces zero `error`-level output, so a
+          // silent suppression would mask the handler bug at default log
+          // levels. The rate is bounded by handler defects, not traffic.
+          this.logger.warn('[RabbitMQ::Consumer] ack suppressed — delivery already terminated')
+          return
+        }
+        // Call the broker FIRST, flip the flag on success only. If
+        // `channel.ack` throws synchronously (channel closed mid-handler),
+        // `terminated` stays false and the catch-safety-net below can
+        // still nack — otherwise the delivery would sit unacked until the
+        // reconnect re-asserts the channel.
+        this.channel.ack(msg)
+        terminated = true
+      }
+      const nack = () => {
+        if (terminated) {
+          this.logger.warn('[RabbitMQ::Consumer] nack suppressed — delivery already terminated')
+          return
+        }
+        this.channel.nack(msg, false, false)
+        terminated = true
+      }
+
+      try {
+        const content = JSON.parse(msg.content.toString())
+        await handler(content, ack, nack)
+      } catch (error) {
+        this.logger.error(`[RabbitMQ] Error processing message: ${safeErrorMessage(error)}`)
+        // Safety-net: if the handler threw before reaching a terminal
+        // call, nack the delivery. If a terminal call already fired,
+        // skip — the `terminated` guard makes this idempotent. The
+        // call-broker-first ordering above guarantees a synchronous
+        // throw from `channel.ack/nack` leaves `terminated === false`,
+        // so this path still nacks for that broker-error case.
+        if (!terminated) {
           this.channel.nack(msg, false, false)
+          terminated = true
         }
       }
     }

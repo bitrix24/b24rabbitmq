@@ -444,12 +444,13 @@ describe('RabbitMQConsumer', () => {
     })
 
     /**
-     * Defect lock (Phase 1 #7 — newly surfaced): if a handler calls ack()
-     * and then throws, both `channel.ack` AND `channel.nack` fire on the
-     * same message — a protocol error that amqplib refuses in production.
-     * Locking the current shape so the Phase 1 fix has a baseline.
+     * Phase 1 #7 — ack/nack idempotency.
+     * If the handler calls `ack()` and then throws, the library MUST NOT
+     * follow up with `nack` in the catch — `amqplib` rejects the second
+     * terminal call (protocol error). The pre-fix shape used to call
+     * both; the test that locked the defect was flipped in this PR.
      */
-    it('CURRENTLY calls both ack and nack when the handler ack()s and then throws (defect lock)', async () => {
+    it('calls only ack (no follow-up nack) when the handler ack()s and then throws', async () => {
       const consumer = new RabbitMQConsumer(config)
       await consumer.initialize()
       consumer.registerHandler('q1', async (_content, ack) => {
@@ -460,8 +461,84 @@ describe('RabbitMQConsumer', () => {
       const callback = getConsumeCallback(channel, 'q1')
       const msg = { content: Buffer.from(JSON.stringify({})) }
       await callback(msg)
+      expect(channel.ack).toHaveBeenCalledTimes(1)
       expect(channel.ack).toHaveBeenCalledWith(msg)
+      expect(channel.nack).not.toHaveBeenCalled()
+    })
+
+    it('calls nack only once when the handler nack()s and then throws', async () => {
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+      consumer.registerHandler('q1', async (_content, _ack, nack) => {
+        nack()
+        throw new Error('after-nack')
+      })
+      await consumer.consume('q1')
+      const callback = getConsumeCallback(channel, 'q1')
+      const msg = { content: Buffer.from(JSON.stringify({})) }
+      await callback(msg)
+      expect(channel.nack).toHaveBeenCalledTimes(1)
       expect(channel.nack).toHaveBeenCalledWith(msg, false, false)
+      expect(channel.ack).not.toHaveBeenCalled()
+    })
+
+    it('ignores a second ack() call from the same handler invocation and logs at warn', async () => {
+      const logger: Logger = {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn()
+      }
+      const consumer = new RabbitMQConsumer({ ...config, logger })
+      await consumer.initialize()
+      consumer.registerHandler('q1', async (_content, ack) => {
+        ack()
+        ack()
+      })
+      await consumer.consume('q1')
+      const callback = getConsumeCallback(channel, 'q1')
+      const msg = { content: Buffer.from(JSON.stringify({})) }
+      await callback(msg)
+      expect(channel.ack).toHaveBeenCalledTimes(1)
+      expect(channel.nack).not.toHaveBeenCalled()
+      // Suppressed-terminal diagnostic must reach the logger at `warn`
+      // (not `debug`) so the handler bug stays visible at default levels.
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('ack suppressed')
+      )
+    })
+
+    it('ignores nack() after ack() in the same handler invocation (first terminal call wins)', async () => {
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+      consumer.registerHandler('q1', async (_content, ack, nack) => {
+        ack()
+        nack()
+      })
+      await consumer.consume('q1')
+      const callback = getConsumeCallback(channel, 'q1')
+      const msg = { content: Buffer.from(JSON.stringify({})) }
+      await callback(msg)
+      expect(channel.ack).toHaveBeenCalledTimes(1)
+      expect(channel.nack).not.toHaveBeenCalled()
+    })
+
+    it('idempotency is per-delivery: two separate messages each get their own terminal call', async () => {
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+      consumer.registerHandler('q1', async (_content, ack) => {
+        ack()
+        ack()
+      })
+      await consumer.consume('q1')
+      const callback = getConsumeCallback(channel, 'q1')
+      const msg1 = { content: Buffer.from(JSON.stringify({ n: 1 })) }
+      const msg2 = { content: Buffer.from(JSON.stringify({ n: 2 })) }
+      await callback(msg1)
+      await callback(msg2)
+      expect(channel.ack).toHaveBeenCalledTimes(2)
+      expect(channel.ack).toHaveBeenNthCalledWith(1, msg1)
+      expect(channel.ack).toHaveBeenNthCalledWith(2, msg2)
     })
   })
 })
