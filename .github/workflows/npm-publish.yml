@@ -1,11 +1,22 @@
 name: NPM publish 🚀
 
+# Triggered by a GitHub Release being published — which release-please
+# creates automatically when its "release PR" is merged. `workflow_dispatch`
+# is kept as a fallback for manual republish (e.g. failed previous run, or
+# a hotfix outside the release-please flow).
 on:
+  release:
+    types: [published]
   workflow_dispatch:
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
 
 jobs:
   process:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       id-token: write
@@ -15,6 +26,8 @@ jobs:
 
       - name: 'Install pnpm'
         uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
       - name: 'Install node'
         uses: actions/setup-node@v4
@@ -25,6 +38,21 @@ jobs:
 
       - name: 'Install dependencies'
         run: pnpm install --frozen-lockfile
+
+      - name: 'Sanity check — tag matches package.json version'
+        # Cheap insurance against a manually-pushed tag that disagrees with
+        # package.json (release-please keeps them in sync; a workflow_dispatch
+        # from a feature branch could drift).
+        if: github.event_name == 'release'
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          PKG=$(node -p "require('./package.json').version")
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Git tag v$TAG does not match package.json version $PKG"
+            exit 1
+          fi
+          echo "Publishing v$PKG"
 
       - name: Lint
         run: pnpm run lint
@@ -39,6 +67,11 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Docs (TypeDoc dry-run)
+        # Mirror the PR-time gate from ci.yml: a release path should not ship
+        # to npm if the JSDoc surface that just landed has a broken {@link}.
+        run: pnpm run docs:build
 
       - name: 'Publish 🚀'
         shell: bash
