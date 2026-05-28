@@ -44,6 +44,14 @@ jobs:
       - name: 'Install dependencies'
         run: pnpm install --frozen-lockfile
 
+      - name: 'Upgrade npm CLI for OIDC trusted publishing'
+        # Node 22 LTS ships with npm 10.x; OIDC trusted publishing requires
+        # npm 11.5.1+. We use npm (not pnpm) for the actual publish so the
+        # CLI's OIDC integration with the npm registry works first-class.
+        # pnpm 10 stays in charge of install + lint + typecheck + test +
+        # build — it's only the final `publish` step that switches to npm.
+        run: npm install -g npm@latest
+
       - name: 'Sanity check — tag matches package.json version'
         # Cheap insurance against a manually-pushed tag that disagrees with
         # package.json (release-please keeps them in sync; a workflow_dispatch
@@ -94,8 +102,19 @@ jobs:
         # to npm if the JSDoc surface that just landed has a broken {@link}.
         run: pnpm run docs:build
 
-      - name: 'Publish 🚀'
+      - name: 'Publish 🚀 (OIDC trusted publishing)'
+        # No NODE_AUTH_TOKEN / NPM_AUTH_TOKEN: npm requests a short-lived
+        # OIDC token from GitHub Actions (via id-token: write + the env
+        # vars setup-node arranges), exchanges it with the npm registry
+        # for a one-shot publish credential, and ships. The trusted-
+        # publisher binding (repo + workflow path -> npm package) is
+        # configured on the npm side by the package maintainer.
+        #
+        # --ignore-scripts: the explicit `Build` step above already
+        # produced dist/; we skip the `prepack` hook (which would re-
+        # invoke `pnpm run build`) to keep the publish path lean.
+        # --provenance: cryptographic attestation that this tarball
+        # came from this exact workflow run (was already wired in
+        # PR #4; OIDC publishing complements it).
         shell: bash
-        run: pnpm publish --access public --provenance --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+        run: npm publish --access public --provenance --ignore-scripts
