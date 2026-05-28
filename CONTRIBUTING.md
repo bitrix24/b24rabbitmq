@@ -73,8 +73,16 @@ A `workflow_dispatch` trigger on `npm-publish.yml` remains as a manual fallback 
 
 These have to be done **once** by a repo admin and persist:
 
-1. **npm OIDC trusted publisher binding** — done by the package maintainer on `npmjs.com`, not in this repo. Navigate to the package settings (`https://www.npmjs.com/package/@bitrix24/b24rabbitmq/access`) → **Trusted Publishers** → add a GitHub Actions trusted publisher pointing at this repo (`bitrix24/b24rabbitmq`), workflow filename `npm-publish.yml`, environment empty (we don't gate on an environment yet). Once this binding exists, the workflow's `id-token: write` permission + `actions/setup-node` registry config lets the npm CLI exchange a short-lived OIDC token for a one-shot publish credential — **no long-lived secret stored in the repo.** Provenance attestation (`--provenance`) is signed in the same flow.
-   _Failure mode if skipped:_ the `Publish 🚀 (OIDC trusted publishing)` step fails with `npm error code ENEEDAUTH` or `npm error 401 Unauthorized` referencing the trusted-publisher binding being absent.
+1. **npm OIDC trusted publisher binding** — done by the package maintainer on `npmjs.com`, not in this repo. **No long-lived secret stored in the repo.** Steps on the npm side:
+   - Open `https://www.npmjs.com/package/@bitrix24/b24rabbitmq/access` → **Trusted Publishers** tab.
+   - Add a GitHub Actions trusted publisher with:
+     - **Repository:** `bitrix24/b24rabbitmq`
+     - **Workflow filename:** `npm-publish.yml`
+     - **Environment:** empty (we don't gate on a GitHub `environment:` yet — defense-in-depth follow-up).
+   - Once the binding exists, the workflow's `id-token: write` permission + `actions/setup-node` registry config lets the npm CLI exchange a short-lived OIDC token for a one-shot publish credential. Provenance attestation (`--provenance`) is signed in the same flow.
+   - **After the first successful OIDC publish, delete any stale `NPM_AUTH_TOKEN` secret** from `Settings → Secrets and variables → Actions` so a future workflow edit can't fall back to the long-lived token. If OIDC ever needs to be bypassed for a hotfix, regenerate a fresh automation token at publish time rather than stockpiling one.
+
+   _Failure mode if the binding is missing:_ the `Publish 🚀 (OIDC trusted publishing)` step fails with `npm error code ENEEDAUTH` or `npm error 401 Unauthorized` referencing the absent trusted-publisher binding.
 2. **Settings → Branches → Branch protection rules** for `main`:
    - Require a pull request before merging (1 approval minimum).
    - Require status checks to pass before merging — include every CI job: `Lint`, `Typecheck`, `Unit tests (node 20)`, `Unit tests (node 22)`, `Build`, `Commit messages`, `Docs (TypeDoc dry-run)`.
