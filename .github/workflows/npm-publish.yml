@@ -38,9 +38,11 @@ jobs:
           fetch-depth: 0
 
       - name: 'Install pnpm'
+        # Version is read from `packageManager: pnpm@X.Y.Z` in package.json
+        # (the precise pinned version). Specifying `version:` here in
+        # addition triggers ERR_PNPM_BAD_PM_VERSION on newer action versions
+        # since both sources disagree about which is authoritative.
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: 'Install node'
         uses: actions/setup-node@v4
