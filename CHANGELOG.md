@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.2.0](https://github.com/bitrix24/b24rabbitmq/compare/v0.1.0...v0.2.0) (2026-05-29)
+
+
+### Added
+
+* **logger:** dependency-inject Logger; scrub URL credentials in diagnostics ([#15](https://github.com/bitrix24/b24rabbitmq/issues/15)) ([6400973](https://github.com/bitrix24/b24rabbitmq/commit/64009738ef71b4ce88a9f02a0caf8b83149fe848))
+
+
+### Bug Fixes
+
+* **base:** merge x-max-priority, dead-letter and caller arguments into one object ([#10](https://github.com/bitrix24/b24rabbitmq/issues/10)) ([86f663b](https://github.com/bitrix24/b24rabbitmq/commit/86f663b360755773ae0147e1a6becb4bf38810fb))
+* **consumer:** bounded async reconnect with topology re-assertion ([#14](https://github.com/bitrix24/b24rabbitmq/issues/14)) ([56d7bc5](https://github.com/bitrix24/b24rabbitmq/commit/56d7bc5f0f01cc6f33704c8051cc19a3ef005649))
+* **consumer:** make ack/nack idempotent per delivery (Phase 1 [#7](https://github.com/bitrix24/b24rabbitmq/issues/7)) ([#17](https://github.com/bitrix24/b24rabbitmq/issues/17)) ([c1259cb](https://github.com/bitrix24/b24rabbitmq/commit/c1259cb1eb05c02b7de22f09621f74129e0c3f12))
+* **producer:** drop prefetch on publish channel, document publish() return semantics ([#13](https://github.com/bitrix24/b24rabbitmq/issues/13)) ([aa32cf3](https://github.com/bitrix24/b24rabbitmq/commit/aa32cf3bbd9ee9d52c2bb4f925edbf2e9d37ca3f))
+* **release:** drop pnpm version pin from npm-publish.yml — packageManager wins ([#25](https://github.com/bitrix24/b24rabbitmq/issues/25)) ([e8326ae](https://github.com/bitrix24/b24rabbitmq/commit/e8326aeeedb97759de2a9099fc0d82eb91815580))
+* **release:** unblock v0.1.0 npm publish — handle component-prefixed tag + Node 24 opt-in ([#23](https://github.com/bitrix24/b24rabbitmq/issues/23)) ([f24e8f2](https://github.com/bitrix24/b24rabbitmq/commit/f24e8f266c3c5840b863f0551ce355ba53a1d649))
+* **type/Message:** improve ([d230605](https://github.com/bitrix24/b24rabbitmq/commit/d230605ad850f73db28efe0326a90b27c687bb0c))
+* **uuidv7:** improve ([07e4956](https://github.com/bitrix24/b24rabbitmq/commit/07e4956b7ba8cbae0db0a64de2c0bf6bb0499d5a))
+* **uuidv7:** improve ([4ecc743](https://github.com/bitrix24/b24rabbitmq/commit/4ecc743c52863b1e9ba27e242aceb75f3001acd1))
+* **uuidv7:** support NodeJs (Issue [#2](https://github.com/bitrix24/b24rabbitmq/issues/2)) ([1912f3f](https://github.com/bitrix24/b24rabbitmq/commit/1912f3f2a0b00d740a0429fc0af636ab787bd02b))
+
+
+### Changed
+
+* drop RabbitRPC from v0.1 scope (closes [#6](https://github.com/bitrix24/b24rabbitmq/issues/6)) ([#12](https://github.com/bitrix24/b24rabbitmq/issues/12)) ([d2bf9e0](https://github.com/bitrix24/b24rabbitmq/commit/d2bf9e0b5e9cb2b7b985c6ea8edadf37c711a8e0))
+
+
+### Documentation
+
+* build, commit messages, ci aggregator — all green on ([d5217a3](https://github.com/bitrix24/b24rabbitmq/commit/d5217a32eac66d6dbe784d30125c3baec69bd371))
+* **deps:** improve ([a699c70](https://github.com/bitrix24/b24rabbitmq/commit/a699c702a349fee77cabc5189cd091fae7e31065))
+* **en:** add ([5683628](https://github.com/bitrix24/b24rabbitmq/commit/56836286977ff7c1b7ea23b3042fed46047a1aad))
+* **en:** fix clear ([f565e4a](https://github.com/bitrix24/b24rabbitmq/commit/f565e4a52b7b6af87d4a31d4823dc1e573b21652))
+* **en:** fix nav ([fd1c8e3](https://github.com/bitrix24/b24rabbitmq/commit/fd1c8e3d64ba40d6b15c3a4c73246931f7b98134))
+* **en:** fix nav ([e241a3d](https://github.com/bitrix24/b24rabbitmq/commit/e241a3d44ad7f671842160dec871fd6d4065d548))
+* improve ([c17e0d1](https://github.com/bitrix24/b24rabbitmq/commit/c17e0d10b3da3304557cb2fb791a72b7420eee03))
+* positioning brief and bold reductions toward a credible v0.1 ([#5](https://github.com/bitrix24/b24rabbitmq/issues/5)) ([818411b](https://github.com/bitrix24/b24rabbitmq/commit/818411bd9c62853b41d71fc142c8daf9e58ae1e0))
+* **README:** improve ([97fa377](https://github.com/bitrix24/b24rabbitmq/commit/97fa3778deff20d981e0de6b24447603b55aa194))
+* **typedoc:** add API reference + PR-time JSDoc gate (Sprint C) ([#18](https://github.com/bitrix24/b24rabbitmq/issues/18)) ([97e4886](https://github.com/bitrix24/b24rabbitmq/commit/97e4886fe38e46f70c6c9112523c79d93623ace3))
+
 ## [0.1.0](https://github.com/bitrix24/b24rabbitmq/compare/b24rabbitmq-v0.0.4...b24rabbitmq-v0.1.0) (2026-05-29)
 
 ### Added
