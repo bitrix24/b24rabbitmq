@@ -107,3 +107,39 @@ jobs:
       # TypeDoc warning fails the PR BEFORE merge instead of flipping the
       # Docs badge red on `main`. `treatWarningsAsErrors: true` in typedoc.json.
       - run: pnpm run docs:build
+
+  ci:
+    # Aggregator job whose name (`ci`) is what `Settings → Branches →
+    # Branch protection rules → Require status checks` points at. This
+    # spares the maintainer from having to enumerate every job above as
+    # a separate required check — one line in branch protection,
+    # one bash test here, every gate covered.
+    #
+    # `if: always()` runs this job even if a dependency failed, so
+    # branch protection sees a concrete success/failure status instead
+    # of a permanently-pending `ci` (which would silently block every
+    # PR — the exact failure mode this aggregator fixes).
+    name: ci
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [lint, typecheck, test, build, docs]
+    steps:
+      - name: Aggregate required-gate results
+        env:
+          LINT: ${{ needs.lint.result }}
+          TYPECHECK: ${{ needs.typecheck.result }}
+          TEST: ${{ needs.test.result }}
+          BUILD: ${{ needs.build.result }}
+          DOCS: ${{ needs.docs.result }}
+        run: |
+          echo "lint=$LINT typecheck=$TYPECHECK test=$TEST build=$BUILD docs=$DOCS"
+          if [ "$LINT" = "success" ] \
+             && [ "$TYPECHECK" = "success" ] \
+             && [ "$TEST" = "success" ] \
+             && [ "$BUILD" = "success" ] \
+             && [ "$DOCS" = "success" ]; then
+            echo "All required CI gates passed."
+          else
+            echo "::error::One or more required CI gates did not succeed."
+            exit 1
+          fi
