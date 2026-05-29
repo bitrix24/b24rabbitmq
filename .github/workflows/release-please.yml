@@ -9,6 +9,16 @@ permissions:
   contents: write
   pull-requests: write
 
+# Opt the workflow into Node.js 24 for any JavaScript action that's still
+# pinned to Node 20 internally (googleapis/release-please-action@v4 was
+# flagged by the runner deprecation warning on 2026-05-29). This is the
+# documented forward-compatible flag from the runner deprecation notice
+# (https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/);
+# can be removed once the action ships a Node 24 native release and we
+# bump the major.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 concurrency:
   group: release-please-${{ github.ref }}
   cancel-in-progress: false
