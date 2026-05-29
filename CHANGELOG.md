@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [0.1.0](https://github.com/bitrix24/b24rabbitmq/compare/b24rabbitmq-v0.0.4...b24rabbitmq-v0.1.0) (2026-05-29)
 
 ### Added
 
@@ -16,49 +16,12 @@
 
 ### Removed
 
-* **`RabbitRPC` dropped from v0.1 scope.** The class was already unexported from the public barrel (since PR #5) pending verification; the verification confirmed two compounding defects (reply queue never subscribed; AMQP `properties.correlationId` not surfaced to handlers). Fixing them required an architectural change to `MessageHandler` for a primitive that no consumer was using yet — not justified for v0.1. Removed: `src/rpc.ts`, `src/tools/uuidv7.ts` (its only user), and their tests. If request/reply is needed, build it on top of `Producer` + `Consumer` for now; a properties-aware RPC may return in v0.2.
+* **`RabbitRPC` dropped from v0.1 scope.** The class was already unexported from the public barrel (since PR #5) pending verification; the verification confirmed two compounding defects (reply queue never subscribed; AMQP `properties.correlationId` not surfaced to handlers). Fixing them required an architectural change to `MessageHandler` for a primitive that no consumer was using yet — not justified for v0.1. Removed: `src/rpc.ts`, `src/tools/uuidv7.ts` (its only user), and their tests. If request/reply is needed, build it on top of `Producer` + `Consumer` for now; a properties-aware RPC may return in v0.2. (#12)
 
 ### Bug Fixes
 
 * **consumer:** ack/nack idempotency in `buildDeliveryCallback()`. Each delivery now owns a `terminated` flag; only the first of `ack()` / `nack()` / catch-safety-net fires on the wire — subsequent terminal calls are suppressed (logged at `warn` so the handler bug stays discoverable at default log levels). Closes a protocol-error path where a handler that called `ack()` then threw caused BOTH `channel.ack` AND `channel.nack` to fire on the same message — amqplib treats the second terminal call as a channel-killing protocol error in production. The library now also calls the broker FIRST and flips `terminated` only on success, so a synchronous throw from `channel.ack/nack` (e.g. channel closed mid-handler) still falls through to the catch-safety-net `nack` instead of leaving the delivery unacked. Also covers double-ack, ack-then-nack, and confirms idempotency is per-delivery (no leak between messages). Six new tests (including a `logger.warn` lock for the suppressed-call diagnostic); the Phase 0 characterisation lock that pinned the "calls both ack and nack" defect was flipped to assert only the explicit `ack`. (#17)
 * **base/registerQueue:** merge `x-max-priority`, dead-letter and caller-supplied `options.arguments` into a single `arguments` object passed to `channel.assertQueue`. Two compounding spread defects previously caused (a) the dead-letter pair to be silently dropped when both `maxPriority` and `deadLetter` were set, and (b) caller-supplied `options.arguments` to wholesale-replace the library-injected keys. **Behavioural change** for any consumer that previously combined raw `x-dead-letter-*` keys with `maxPriority`: both now reach the broker (correct), where before only the priority did. The redundant top-level `maxPriority` field is no longer passed, so explicit overrides via `options.arguments['x-max-priority']` now take effect on the wire. `maxPriority: 0` no longer ships an invalid `x-max-priority: 0` (AMQP requires 1–255); the key is omitted. (#10)
-
-## [0.1.0](https://github.com/bitrix24/b24rabbitmq/compare/b24rabbitmq-v0.0.4...b24rabbitmq-v0.1.0) (2026-05-29)
-
-
-### Added
-
-* **logger:** dependency-inject Logger; scrub URL credentials in diagnostics ([#15](https://github.com/bitrix24/b24rabbitmq/issues/15)) ([6400973](https://github.com/bitrix24/b24rabbitmq/commit/64009738ef71b4ce88a9f02a0caf8b83149fe848))
-
-
-### Bug Fixes
-
-* **base:** merge x-max-priority, dead-letter and caller arguments into one object ([#10](https://github.com/bitrix24/b24rabbitmq/issues/10)) ([86f663b](https://github.com/bitrix24/b24rabbitmq/commit/86f663b360755773ae0147e1a6becb4bf38810fb))
-* **consumer:** bounded async reconnect with topology re-assertion ([#14](https://github.com/bitrix24/b24rabbitmq/issues/14)) ([56d7bc5](https://github.com/bitrix24/b24rabbitmq/commit/56d7bc5f0f01cc6f33704c8051cc19a3ef005649))
-* **consumer:** make ack/nack idempotent per delivery (Phase 1 [#7](https://github.com/bitrix24/b24rabbitmq/issues/7)) ([#17](https://github.com/bitrix24/b24rabbitmq/issues/17)) ([c1259cb](https://github.com/bitrix24/b24rabbitmq/commit/c1259cb1eb05c02b7de22f09621f74129e0c3f12))
-* **producer:** drop prefetch on publish channel, document publish() return semantics ([#13](https://github.com/bitrix24/b24rabbitmq/issues/13)) ([aa32cf3](https://github.com/bitrix24/b24rabbitmq/commit/aa32cf3bbd9ee9d52c2bb4f925edbf2e9d37ca3f))
-* **type/Message:** improve ([d230605](https://github.com/bitrix24/b24rabbitmq/commit/d230605ad850f73db28efe0326a90b27c687bb0c))
-* **uuidv7:** improve ([07e4956](https://github.com/bitrix24/b24rabbitmq/commit/07e4956b7ba8cbae0db0a64de2c0bf6bb0499d5a))
-* **uuidv7:** improve ([4ecc743](https://github.com/bitrix24/b24rabbitmq/commit/4ecc743c52863b1e9ba27e242aceb75f3001acd1))
-* **uuidv7:** support NodeJs (Issue [#2](https://github.com/bitrix24/b24rabbitmq/issues/2)) ([1912f3f](https://github.com/bitrix24/b24rabbitmq/commit/1912f3f2a0b00d740a0429fc0af636ab787bd02b))
-
-
-### Changed
-
-* drop RabbitRPC from v0.1 scope (closes [#6](https://github.com/bitrix24/b24rabbitmq/issues/6)) ([#12](https://github.com/bitrix24/b24rabbitmq/issues/12)) ([d2bf9e0](https://github.com/bitrix24/b24rabbitmq/commit/d2bf9e0b5e9cb2b7b985c6ea8edadf37c711a8e0))
-
-
-### Documentation
-
-* **deps:** improve ([a699c70](https://github.com/bitrix24/b24rabbitmq/commit/a699c702a349fee77cabc5189cd091fae7e31065))
-* **en:** add ([5683628](https://github.com/bitrix24/b24rabbitmq/commit/56836286977ff7c1b7ea23b3042fed46047a1aad))
-* **en:** fix clear ([f565e4a](https://github.com/bitrix24/b24rabbitmq/commit/f565e4a52b7b6af87d4a31d4823dc1e573b21652))
-* **en:** fix nav ([fd1c8e3](https://github.com/bitrix24/b24rabbitmq/commit/fd1c8e3d64ba40d6b15c3a4c73246931f7b98134))
-* **en:** fix nav ([e241a3d](https://github.com/bitrix24/b24rabbitmq/commit/e241a3d44ad7f671842160dec871fd6d4065d548))
-* improve ([c17e0d1](https://github.com/bitrix24/b24rabbitmq/commit/c17e0d10b3da3304557cb2fb791a72b7420eee03))
-* positioning brief and bold reductions toward a credible v0.1 ([#5](https://github.com/bitrix24/b24rabbitmq/issues/5)) ([818411b](https://github.com/bitrix24/b24rabbitmq/commit/818411bd9c62853b41d71fc142c8daf9e58ae1e0))
-* **README:** improve ([97fa377](https://github.com/bitrix24/b24rabbitmq/commit/97fa3778deff20d981e0de6b24447603b55aa194))
-* **typedoc:** add API reference + PR-time JSDoc gate (Sprint C) ([#18](https://github.com/bitrix24/b24rabbitmq/issues/18)) ([97e4886](https://github.com/bitrix24/b24rabbitmq/commit/97e4886fe38e46f70c6c9112523c79d93623ace3))
 
 ## [0.0.4](https://github.com/bitrix24/b24rabbitmq/compare/v0.0.3...v0.0.4) (2025-05-28)
 
