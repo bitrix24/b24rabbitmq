@@ -85,7 +85,9 @@ These have to be done **once** by a repo admin and persist:
    _Failure mode if the binding is missing:_ the `Publish 🚀 (OIDC trusted publishing)` step fails with `npm error code ENEEDAUTH` or `npm error 401 Unauthorized` referencing the absent trusted-publisher binding.
 2. **Settings → Branches → Branch protection rules** for `main`:
    - Require a pull request before merging (1 approval minimum).
-   - Require status checks to pass before merging — include every CI job: `Lint`, `Typecheck`, `Unit tests (node 20)`, `Unit tests (node 22)`, `Build`, `Commit messages`, `Docs (TypeDoc dry-run)`.
+   - Require status checks to pass before merging. **Two equivalent options** — pick one:
+     - **Single aggregator (recommended):** require just `ci`. This is the aggregator job at the bottom of `.github/workflows/ci.yml` that `needs:` every other gate; one line in branch protection, every gate covered. `Commit messages` (commitlint) is the only check you may also want to require since it isn't gated by the aggregator (commitlint runs PR-only and is independent).
+     - **Explicit list:** require every CI job by its display name: `Lint`, `Typecheck`, `Unit tests (node 20)`, `Unit tests (node 22)`, `Build`, `Docs (TypeDoc dry-run)`, `Commit messages`. **Use the exact job names** (the `name:` field in `ci.yml`) — adding the workflow filename (`ci`, `ci.yml`) instead of a job name results in a permanently-pending required check and silently blocks every PR.
    - Require branches to be up to date before merging (forces PR rebases against a busy `main` — accept the cost, it prevents stale-branch regressions).
    _Failure mode if skipped:_ no error surface at all — contributors can push to `main` directly and PRs can land with red CI. Only detectable by reviewing `main` history.
 3. **Settings → Actions → General → Workflow permissions** = `Read and write permissions` (so release-please can push commits to its release PR). Also enable `Allow GitHub Actions to create and approve pull requests`.
