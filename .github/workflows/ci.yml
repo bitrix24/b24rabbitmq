@@ -13,6 +13,14 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Opt the workflow into Node.js 24 for any JavaScript action still pinned
+# to Node 20 internally (actions/checkout@v4, actions/setup-node@v4,
+# pnpm/action-setup@v4 all flag the runner deprecation notice as of
+# 2026-05-29). Mirrors npm-publish.yml + release-please.yml; remove once
+# every action we pin has shipped a Node 24 native release.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   commitlint:
     name: Commit messages

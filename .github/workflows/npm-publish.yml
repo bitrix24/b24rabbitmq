@@ -13,6 +13,14 @@ concurrency:
   group: npm-publish
   cancel-in-progress: false
 
+# Opt the workflow into Node.js 24 for any JavaScript action still pinned
+# to Node 20 internally (actions/checkout@v4, actions/setup-node@v4,
+# pnpm/action-setup@v4 all flag the runner deprecation notice as of
+# 2026-05-29). See https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/ —
+# remove once every action we pin has shipped a Node 24 native release.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   process:
     runs-on: ubuntu-latest
@@ -70,10 +78,21 @@ jobs:
         shell: bash
         run: |
           PKG=$(node -p "require('./package.json').version")
+          # Two-step strip handles both `v0.1.0` (the format we want going
+          # forward, after `include-component-in-tag: false`) and the legacy
+          # `b24rabbitmq-v0.1.0` component-prefixed tag release-please
+          # generated for v0.1.0 before that flag was set. The component
+          # prefix is hard-coded — there's exactly one package in this repo.
+          strip_tag() {
+            local raw="$1"
+            raw="${raw#b24rabbitmq-}"
+            raw="${raw#v}"
+            echo "$raw"
+          }
           if [ "${GITHUB_EVENT_NAME}" = "release" ]; then
             RAW="${GITHUB_REF#refs/tags/}"
-            TAG="${RAW#v}"
-            SOURCE="release event"
+            TAG=$(strip_tag "$RAW")
+            SOURCE="release event (tag $RAW)"
           else
             # workflow_dispatch — derive tag from the commit HEAD points at.
             RAW=$(git describe --tags --exact-match HEAD 2>/dev/null || true)
@@ -81,7 +100,7 @@ jobs:
               echo "::error::workflow_dispatch publish requires HEAD to be on a tag (none found). Push tag v$PKG or use the release event."
               exit 1
             fi
-            TAG="${RAW#v}"
+            TAG=$(strip_tag "$RAW")
             SOURCE="workflow_dispatch on tag $RAW"
           fi
           if [ "$TAG" != "$PKG" ]; then
