@@ -148,5 +148,20 @@ describe('RabbitMQProducer', () => {
         producer.publish('never.registered.v1', 'rk', { x: 1 })
       ).resolves.toBe(true)
     })
+
+    /**
+     * publish() returns amqplib's client-side write-buffer signal verbatim
+     * (documented in the JSDoc): `false` means the buffer is full and the
+     * caller should await 'drain' before publishing more. Lock that the
+     * back-pressure signal is propagated, not swallowed.
+     */
+    it('propagates the false back-pressure signal from channel.publish', async () => {
+      const producer = new RabbitMQProducer(config)
+      await producer.initialize()
+      channel.publish.mockReturnValueOnce(false)
+
+      const ok = await producer.publish('events.v1', 'rk', { x: 1 })
+      expect(ok).toBe(false)
+    })
   })
 })
