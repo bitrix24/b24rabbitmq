@@ -64,13 +64,12 @@ describe('RabbitMQProducer', () => {
     /**
      * Covers the false branch of `error instanceof Error` in producer.ts:
      * when amqp.connect rejects with a non-Error value, the producer
-     * wraps it in a new Error with the raw rejection as `.cause`. The
-     * wrapper's `.message` is what reaches the logger; `safeErrorMessage`
-     * does not walk `.cause` — by design (see `src/logger.ts` JSDoc).
-     * Net effect: credentials in the rejection value do NOT leak into the
-     * log, because the wrapper hides them in `.cause`.
+     * wraps it in a new Error with the raw rejection as `.cause`.
+     * `safeErrorMessage` now WALKS `.cause` (see `src/logger.ts`), so the
+     * cause string reaches the log — but with its credentials scrubbed.
+     * Net effect: the host survives for diagnostics, the user:pass does not.
      */
-    it('wraps a non-Error rejection (URL credentials in cause stay out of logs)', async () => {
+    it('wraps a non-Error rejection and scrubs credentials carried in cause', async () => {
       vi.mocked(amqp.connect).mockReset()
       vi.mocked(amqp.connect).mockRejectedValueOnce('connect failed: amqps://alice:s3cret@host')
       const logger = {
@@ -83,11 +82,13 @@ describe('RabbitMQProducer', () => {
 
       await expect(producer.initialize()).rejects.toThrow('[RabbitMQ::Producer] connected error')
 
-      // The wrapper's message is logged; the credentials in `.cause` are not.
       const errorCalls = logger.error.mock.calls.flat().join(' ')
       expect(errorCalls).toContain('[RabbitMQ::Producer] connected error')
+      // Credentials from the cause are scrubbed...
       expect(errorCalls).not.toContain('s3cret')
       expect(errorCalls).not.toContain('alice')
+      // ...but the scrubbed cause (host) is now surfaced for diagnostics.
+      expect(errorCalls).toContain('amqps://***:***@host')
     })
   })
 
