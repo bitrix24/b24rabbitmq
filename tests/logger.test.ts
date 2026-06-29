@@ -57,6 +57,36 @@ describe('logger', () => {
       expect(safeErrorMessage(null)).toBe('null')
       expect(safeErrorMessage(undefined)).toBe('undefined')
     })
+
+    it('scrubs credentials hidden in error.cause', () => {
+      // amqplib often throws a clean wrapper Error whose `cause` carries the
+      // original error whose message still contains amqp://user:pass@host.
+      const cause = new Error('getaddrinfo ENOTFOUND amqp://alice:s3cret@host')
+      const error = new Error('connect failed', { cause })
+      const out = safeErrorMessage(error)
+      expect(out).toContain('connect failed')
+      expect(out).toContain('amqp://***:***@host')
+      expect(out).not.toContain('s3cret')
+    })
+
+    it('walks a nested cause chain and scrubs each level', () => {
+      const inner = new Error('amqps://u:p@inner')
+      const middle = new Error('wrap amqps://x:y@middle', { cause: inner })
+      const outer = new Error('top', { cause: middle })
+      const out = safeErrorMessage(outer)
+      expect(out).not.toContain(':p@')
+      expect(out).not.toContain(':y@')
+      expect(out).toContain('amqps://***:***@inner')
+      expect(out).toContain('amqps://***:***@middle')
+    })
+
+    it('does not loop forever on a self-referential cause', () => {
+      const error = new Error('amqp://u:p@host')
+      ;(error as Error & { cause: unknown }).cause = error
+      const out = safeErrorMessage(error)
+      expect(out).toContain('amqp://***:***@host')
+      expect(out).not.toContain(':p@')
+    })
   })
 
   describe('defaultLogger', () => {
