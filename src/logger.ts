@@ -55,14 +55,35 @@ export function sanitizeUrl(url: string): string {
  * credentials before returning. Use whenever a caught error is fed to
  * the logger.
  *
- * Note: only `error.message` is processed. `error.cause` chains and
- * any structured fields are NOT walked — if a future call site logs
- * the full Error object, it must sanitize separately.
+ * Walks the `error.cause` chain (as set by `new Error(msg, { cause })`,
+ * which amqplib and our own `connect()` wrappers use) so credentials
+ * hidden in a nested cause are scrubbed too, not just the top-level
+ * `message`. The walk is bounded and cycle-safe.
  *
  * @param error any thrown value (Error, string, primitive, object).
  * @returns a scrubbed string suitable for the logger.
  */
 export function safeErrorMessage(error: unknown): string {
-  const raw = error instanceof Error ? error.message : String(error)
-  return sanitizeUrl(raw)
+  const parts: string[] = []
+  const seen = new Set<unknown>()
+  let current: unknown = error
+
+  // Bound the walk: cycle guard via `seen`, plus a hard depth cap as a
+  // belt-and-suspenders backstop against pathological chains.
+  for (let depth = 0; depth < 10 && current != null && !seen.has(current); depth++) {
+    seen.add(current)
+    if (current instanceof Error) {
+      parts.push(current.message)
+      current = current.cause
+    } else {
+      parts.push(String(current))
+      break
+    }
+  }
+
+  if (parts.length === 0) {
+    parts.push(String(error))
+  }
+
+  return sanitizeUrl(parts.join(': '))
 }
