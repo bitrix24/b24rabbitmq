@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.1](https://github.com/bitrix24/b24rabbitmq/compare/v0.1.0...v0.1.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* **consumer:** cancel subscription on unRegisterHandler, reset retry counter ([#45](https://github.com/bitrix24/b24rabbitmq/issues/45)) ([4950ae2](https://github.com/bitrix24/b24rabbitmq/commit/4950ae231791e0481f5b8826a38aa3dff95fc942))
+* **logger:** scrub credentials from error.cause chain ([#44](https://github.com/bitrix24/b24rabbitmq/issues/44)) ([56cb07f](https://github.com/bitrix24/b24rabbitmq/commit/56cb07f0e88d97839894085100c211f267983a11))
+
+
+### Documentation
+
+* fix example ack/nack semantics and make examples runnable ([#47](https://github.com/bitrix24/b24rabbitmq/issues/47)) ([9761c78](https://github.com/bitrix24/b24rabbitmq/commit/9761c78f5dfa7a4f8c01563f22891f6b31e814a7))
+
 ## [0.1.0](https://github.com/bitrix24/b24rabbitmq/compare/b24rabbitmq-v0.0.4...b24rabbitmq-v0.1.0) (2026-05-29)
 
 ### Added
