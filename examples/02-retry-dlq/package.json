@@ -1,0 +1,19 @@
+{
+  "name": "b24rabbitmq-example-02-retry-dlq",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Runnable example: native dead-letter queue (DLX-driven) retry pattern.",
+  "scripts": {
+    "worker": "tsx worker.ts",
+    "drain": "tsx dlq-drain.ts",
+    "producer": "tsx producer.ts"
+  },
+  "dependencies": {
+    "@bitrix24/b24rabbitmq": "^0.1.0",
+    "amqplib": "^0.10.8"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
+}

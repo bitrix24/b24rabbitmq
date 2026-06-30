@@ -191,9 +191,13 @@ await consumer.initialize();
 await producer.initialize();
 
 consumer.registerHandler('demo2.events.subscriptions-service.v1', async (msg, ack) => {
+  // The handler receives the parsed message body only — AMQP properties
+  // (headers, correlationId, …) are not surfaced at v0.1, so we carry the
+  // retry counter inside the body itself.
+  const body = msg as { retryCount?: number };
   try {
-    const retryCount = msg.headers['x-retry-count'] || 0;
-    
+    const retryCount = body.retryCount ?? 0;
+
     if (retryCount >= 5) {
       throw new Error('Max retries exceeded');
     }
@@ -203,27 +207,26 @@ consumer.registerHandler('demo2.events.subscriptions-service.v1', async (msg, ac
     
     ack();
   } catch (error) {
-    const retryCount = msg.headers['x-retry-count'] || 0;
-    const newRetryCount = retryCount + 1;
+    const newRetryCount = (body.retryCount ?? 0) + 1;
 
     if (newRetryCount < 5) {
-      // Send to the balcony with a delay
+      // Send to the balcony with a delay, bumping the counter in the body.
       await producer.publish(
         'demo2.service.v1',
         'delay.6000',
-        msg,
-        {
-          headers: { 'x-retry-count': newRetryCount }
-        }
+        { ...body, retryCount: newRetryCount }
       );
     } else {
       // Send to the garden
       await producer.publish(
         'demo2.service.v1',
         'failed',
-        { ...msg, error: error.message }
+        { ...body, error: (error as Error).message }
       );
     }
+    // ack the ORIGINAL delivery: we've already re-published a copy (to the
+    // balcony or the garden), so this message is fully handled. nack here
+    // would double-route it through the queue's own dead-letter exchange.
     ack();
   }
 });
@@ -261,6 +264,9 @@ consumer.registerHandler('demo2.subscriptions-service.failed.v1', async (msg, ac
     ack();
   } catch (error) {
     console.error('Failed to process message:', error);
+    // This is the terminal "garden" stage — there is no further DLQ to fall
+    // back to, so we ack to drop the message rather than loop it forever.
+    // Persist/alert above before acking if you must not lose it.
     ack();
   }
 });
@@ -277,7 +283,7 @@ import { rabbitMQConfig } from '../rabbitmq.config';
 const producer = new RabbitMQProducer(rabbitMQConfig);
 await producer.initialize();
 
-export async function sendEvent(message: any) {
+export async function sendEvent(message: unknown) {
   await producer.publish(
     'demo2.events.v1',
     'event.succeeded',

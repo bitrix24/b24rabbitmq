@@ -12,15 +12,15 @@ Mirrors [`docs/en/demo/1_page.md`](../../docs/en/demo/1_page.md).
 # 1. Start RabbitMQ locally
 docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 
-# 2. Install runtime deps (from this example's directory)
-pnpm add @bitrix24/b24rabbitmq amqplib
-pnpm add -D tsx
+# 2. Install deps (from this example's directory; they are declared in
+#    this folder's package.json)
+pnpm install
 
 # 3. Start three consumer instances (in three terminals)
-pnpm exec tsx consumer.ts
+pnpm run consumer
 
 # 4. Publish tasks
-pnpm exec tsx producer.ts
+pnpm run producer
 ```
 
 You should see consumers picking up tasks in round-robin order, each
