@@ -328,6 +328,47 @@ describe('RabbitMQConsumer', () => {
     })
 
     /**
+     * Invalid JSON in the message body is caught by the delivery callback,
+     * logged, and nack'd (requeue=false) so the poison message routes to
+     * any dead-letter exchange instead of looping. The handler never sees
+     * a parse failure.
+     */
+    it('nacks (requeue=false) and logs when the message body is not valid JSON', async () => {
+      const logger: Logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      const consumer = new RabbitMQConsumer({ ...config, logger })
+      await consumer.initialize()
+      const handler = vi.fn().mockResolvedValue(undefined)
+      consumer.registerHandler('q1', handler)
+      await consumer.consume('q1')
+      const callback = getConsumeCallback(channel, 'q1')
+
+      await callback({ content: Buffer.from('not-json{') })
+
+      expect(handler).not.toHaveBeenCalled()
+      expect(channel.nack).toHaveBeenCalledWith(expect.anything(), false, false)
+      expect(channel.ack).not.toHaveBeenCalled()
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Error processing message')
+      )
+    })
+
+    /**
+     * consume() before registerHandler() must not crash: the delivery
+     * callback finds no handler and returns without ack/nack (the message
+     * stays unacked, as documented — register the handler first).
+     */
+    it('ignores deliveries when consume() ran before any registerHandler()', async () => {
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+      await consumer.consume('q1') // no registerHandler first
+      const callback = getConsumeCallback(channel, 'q1')
+
+      await expect(callback({ content: Buffer.from(JSON.stringify({ a: 1 })) })).resolves.toBeUndefined()
+      expect(channel.ack).not.toHaveBeenCalled()
+      expect(channel.nack).not.toHaveBeenCalled()
+    })
+
+    /**
      * Regression test for a bug introduced by Phase 1 #2: `unRegisterHandler`
      * used to only remove the handler from the map, but the reconnect path
      * would still re-subscribe the queue from `subscribedQueues`. Result:
