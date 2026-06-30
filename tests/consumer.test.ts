@@ -193,6 +193,41 @@ describe('RabbitMQConsumer', () => {
       )
     })
 
+    /**
+     * Regression: after a reconnect series exhausts `maxRetries`, a later
+     * 'close' must start a FRESH series rather than give up instantly.
+     * Before the fix, `retries` stayed pinned at the ceiling so the next
+     * series found `retries >= maxRetries` immediately and never attempted.
+     */
+    it('resets the retry counter so a new close after exhaustion retries again', async () => {
+      vi.useFakeTimers()
+      const twoRetryConfig: RabbitMQConfig = {
+        ...config,
+        connection: { ...config.connection, maxRetries: 2, reconnectInterval: 1000 }
+      }
+      vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      vi.mocked(amqp.connect).mockReset()
+      // initialize() succeeds, then series 1 fails twice (exhausts).
+      vi.mocked(amqp.connect)
+        .mockResolvedValueOnce(connection as unknown as Awaited<ReturnType<typeof amqp.connect>>)
+        .mockRejectedValueOnce(new Error('down'))
+        .mockRejectedValueOnce(new Error('down'))
+
+      const consumer = new RabbitMQConsumer(twoRetryConfig)
+      await consumer.initialize()
+
+      connection.emitClose()
+      await vi.advanceTimersByTimeAsync(1000)
+      await vi.advanceTimersByTimeAsync(1000)
+      const connectCallsAfterSeries1 = vi.mocked(amqp.connect).mock.calls.length
+
+      // A fresh close must kick off a new series (at least one more attempt).
+      connection.emitClose()
+      await vi.advanceTimersByTimeAsync(1000)
+
+      expect(vi.mocked(amqp.connect).mock.calls.length).toBeGreaterThan(connectCallsAfterSeries1)
+    })
+
     /** `maxRetries: 0` disables reconnect entirely with a clear log message. */
     it('logs "reconnect disabled" when maxRetries is 0 (no attempt made)', async () => {
       const noRetryConfig: RabbitMQConfig = {
@@ -264,10 +299,32 @@ describe('RabbitMQConsumer', () => {
       await callback(msg)
       expect(handler).toHaveBeenCalledTimes(1)
 
-      consumer.unRegisterHandler('q1')
+      await consumer.unRegisterHandler('q1')
       await callback(msg)
       // unregistered: still only the one prior invocation
       expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it('unRegisterHandler issues basic.cancel for the active consumer tag', async () => {
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+      consumer.registerHandler('q1', vi.fn())
+      // The fake channel.consume resolves to { consumerTag: 'tag' }.
+      await consumer.consume('q1')
+
+      await consumer.unRegisterHandler('q1')
+
+      expect(channel.cancel).toHaveBeenCalledWith('tag')
+    })
+
+    it('unRegisterHandler on an unknown / never-consumed queue does not call cancel', async () => {
+      const consumer = new RabbitMQConsumer(config)
+      await consumer.initialize()
+      consumer.registerHandler('q1', vi.fn())
+
+      await consumer.unRegisterHandler('q1')
+
+      expect(channel.cancel).not.toHaveBeenCalled()
     })
 
     /**
@@ -325,7 +382,7 @@ describe('RabbitMQConsumer', () => {
       consumer.registerHandler('q1', vi.fn())
       await consumer.consume('q1')
 
-      consumer.unRegisterHandler('q1')
+      await consumer.unRegisterHandler('q1')
 
       const consumeCallsBeforeClose = channel.consume.mock.calls.length
       connection.emitClose()

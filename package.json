@@ -38,17 +38,17 @@
     "docs:watch": "typedoc --watch"
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.0.1",
-    "@commitlint/config-conventional": "^21.0.1",
+    "@commitlint/cli": "^21.1.0",
+    "@commitlint/config-conventional": "^21.1.0",
     "@types/amqplib": "^0.10.8",
     "@types/node": "^20.19.9",
-    "@vitest/coverage-v8": "^4.1.7",
+    "@vitest/coverage-v8": "^4.1.9",
     "eslint": "^9.39.4",
     "eslint-config-unjs": "^0.6.2",
     "typedoc": "^0.28.19",
     "typescript": "^5.9.2",
     "unbuild": "^3.6.1",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.9"
   },
   "peerDependencies": {
     "amqplib": "^0.10.8"

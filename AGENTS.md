@@ -10,7 +10,7 @@ Guidance for AI coding agents (Claude Code, Cursor, Copilot, etc.) working in th
 
 `@bitrix24/b24rabbitmq` is a small, dependency-light **ESM** TypeScript library that wraps [`amqplib`](https://github.com/amqp-node/amqplib) with config-driven `Producer` and `Consumer` primitives for integrating Bitrix24 applications (or any Node.js service) with RabbitMQ. `amqplib` is a **peer** dependency; there are no runtime dependencies. Logging is wired via DI — consumers pass their own `Logger` if they want one. Build is ESM-only via `unbuild`. **No RPC / request-reply primitive** at v0.1 — see `PROJECT-BRIEF.md` Phase 1 #1 for rationale; build it on top of Producer + Consumer if you need it, or wait for v0.2.
 
-The project is being reanimated (pre-`v0.1`). A handful of remaining items (logger DI, typing polish, ack/nack idempotency) are scheduled for a test-first refactor — see [Known limitations](#known-limitations) before "fixing" something that looks wrong.
+The project is at `v0.1` (published). The Track 1 Phase 1 correctness items (logger DI, typing polish, ack/nack idempotency, bounded reconnect) have shipped. Remaining work lives in later tracks (publisher confirms, graceful shutdown, observability) — see [Known limitations](#known-limitations) and `PROJECT-BRIEF.md` before "fixing" something that looks wrong.
 
 ## Project structure
 

@@ -16,16 +16,16 @@ This is the **minimal native-DLQ pattern**. For the more elaborate
 # 1. Start RabbitMQ locally
 docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 
-# 2. Install runtime deps (from this example's directory)
-pnpm add @bitrix24/b24rabbitmq amqplib
-pnpm add -D tsx
+# 2. Install deps (from this example's directory; they are declared in
+#    this folder's package.json)
+pnpm install
 
 # 3. Start the worker (terminal 1) and the DLQ drainer (terminal 2)
-pnpm exec tsx worker.ts
-pnpm exec tsx dlq-drain.ts
+pnpm run worker
+pnpm run drain
 
 # 4. Publish a mix of "ok" and "fail" events
-pnpm exec tsx producer.ts
+pnpm run producer
 ```
 
 Expected: the worker ack's `ok` events, nack's `fail` ones; the DLQ

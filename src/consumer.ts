@@ -8,6 +8,8 @@ export class RabbitMQConsumer extends RabbitMQBase {
   private handlers = new Map<string, MessageHandler>()
   /** Queue names we have an active `consume()` subscription on, so we can re-subscribe after reconnect. */
   private subscribedQueues = new Set<string>()
+  /** queueName → active amqplib consumerTag, so `unRegisterHandler` can issue `basic.cancel`. */
+  private consumerTags = new Map<string, string>()
   /** Guard so multiple 'close' events don't kick off concurrent reconnect loops. */
   private reconnectInProgress = false
 
@@ -66,6 +68,12 @@ export class RabbitMQConsumer extends RabbitMQBase {
   private async handleReconnect(): Promise<void> {
     if (this.reconnectInProgress) return
     this.reconnectInProgress = true
+    // Start each reconnect series from a clean counter. `retries` is only
+    // otherwise reset on a successful `connect()`; without this, a series
+    // that exhausted `maxRetries` would leave the counter pinned at the
+    // ceiling, so the NEXT 'close' event would find `retries >= maxRetries`
+    // immediately and give up without a single attempt.
+    this.retries = 0
 
     const maxRetries = this.config.connection.maxRetries ?? 5
     const interval = this.config.connection.reconnectInterval ?? 5000
@@ -82,7 +90,8 @@ export class RabbitMQConsumer extends RabbitMQBase {
           await this.setupExchanges()
           await this.setupQueues()
           for (const queueName of this.subscribedQueues) {
-            await this.channel.consume(queueName, this.buildDeliveryCallback(queueName))
+            const reply = await this.channel.consume(queueName, this.buildDeliveryCallback(queueName))
+            this.consumerTags.set(queueName, reply.consumerTag)
           }
           this.logger.info('[RabbitMQ::Consumer] reconnected and re-subscribed')
           // Clear the guard BEFORE the implicit return so that a fresh
@@ -148,24 +157,43 @@ export class RabbitMQConsumer extends RabbitMQBase {
   }
 
   /**
-   * Remove a previously registered handler and drop the queue from
-   * the reconnect-resubscribe set. Does **not** issue an AMQP
-   * `basic.cancel` against the broker — the consumer tag stays open
-   * and deliveries arriving on the active channel will simply find
-   * no handler and be ignored (a future improvement may cancel
-   * explicitly; see `PROJECT-BRIEF.md`).
+   * Remove a previously registered handler, issue an AMQP `basic.cancel`
+   * for the queue's active consumer (if any), and drop the queue from the
+   * reconnect-resubscribe set.
    *
-   * Removing the queue from `subscribedQueues` is the important part:
-   * without it, a reconnect would re-subscribe a queue with no
-   * handler and (with `prefetchCount=1`) block the queue with
-   * un-acked deliveries.
+   * Issuing `basic.cancel` is what actually stops the broker delivering on
+   * the live channel: without it the consumer tag stays open, deliveries
+   * keep arriving at a now-handlerless callback, and — with
+   * `prefetchCount=1` — the unacked delivery blocks the queue. Dropping the
+   * queue from `subscribedQueues` covers the same hazard across a reconnect.
+   *
+   * Returns a promise because the cancel is a broker round-trip. The handler
+   * map and tracking sets are cleared synchronously **before** the await, so
+   * even an un-awaited call immediately stops dispatching to the handler.
+   *
+   * @param queueName the queue whose subscription to tear down. Unknown
+   *   queues are a no-op.
    */
-  unRegisterHandler(queueName: string): void {
+  async unRegisterHandler(queueName: string): Promise<void> {
     this.handlers.delete(queueName)
-    // Also drop from subscribedQueues so a future reconnect doesn't
-    // re-subscribe a queue with no handler (which would silently leave
-    // its deliveries un-acked and, with prefetchCount=1, block the queue).
+    // Drop from subscribedQueues so a future reconnect doesn't re-subscribe
+    // a queue with no handler (which would silently leave its deliveries
+    // un-acked and, with prefetchCount=1, block the queue).
     this.subscribedQueues.delete(queueName)
+
+    const consumerTag = this.consumerTags.get(queueName)
+    if (consumerTag === undefined) return
+    this.consumerTags.delete(queueName)
+    try {
+      await this.channel.cancel(consumerTag)
+    } catch (error) {
+      // A cancel failure (e.g. channel already closed) is non-fatal: the
+      // handler is already detached and the tag forgotten. Log and move on.
+      this.logger.warn(
+        `[RabbitMQ::Consumer] basic.cancel for "${queueName}" failed:`,
+        safeErrorMessage(error)
+      )
+    }
   }
 
   /**
@@ -186,7 +214,9 @@ export class RabbitMQConsumer extends RabbitMQBase {
     queueName: string
   ): Promise<amqp.Replies.Consume> {
     this.subscribedQueues.add(queueName)
-    return this.channel.consume(queueName, this.buildDeliveryCallback(queueName))
+    const reply = await this.channel.consume(queueName, this.buildDeliveryCallback(queueName))
+    this.consumerTags.set(queueName, reply.consumerTag)
+    return reply
   }
 
   /**
@@ -198,6 +228,7 @@ export class RabbitMQConsumer extends RabbitMQBase {
   override async disconnect(): Promise<void> {
     this.subscribedQueues.clear()
     this.handlers.clear()
+    this.consumerTags.clear()
     this.reconnectInProgress = false
     this.retries = 0
     await super.disconnect()
